@@ -54,24 +54,33 @@ welcome.on('connection', function (socket) {
 	// client says they visited before
 	socket.on('iamaknownclient', function (previousname) {
 		if (clients[previousname]) {
-			// make association to existing entry
-			console.log(previousname + ": reconnecting existing client");
-			console.log("updating socketID from", clients[previousname].socketID, " to", userID);
-			clients[previousname].socketID = userID;
-			thisClient = clients[previousname];
-			thisClient.login();
+			if (clients[previousname].loggedIn) {
+				// register as new client anyway
+				clients[userID] = new client(userID, userID);
+				thisClient = clients[userID];
+				console.log("registered new client", userID);
+				socket.emit('newClientID', userID);
+				thisClient.login();
+			} else {
+				// make association to existing entry
+				console.log(previousname + ": reconnecting existing client");
+				console.log("updating socketID from", clients[previousname].socketID, " to", userID);
+				clients[previousname].socketID = userID;
+				thisClient = clients[previousname];
+				thisClient.login();
+			}
 		} else {
 			// register as new client anyway
 			clients[userID] = new client(userID, userID);
 			thisClient = clients[userID];
 			console.log("registered new client", userID);
-			welcome.emit('newClientID', userID);
+			socket.emit('newClientID', userID);
 			thisClient.login();
 		}
 	});
 	// client says they are new
 	socket.on('iamanewclient', function () {
-		welcome.emit('newClientID', userID);
+		socket.emit('newClientID', userID);
 		clients[userID] = new client(userID, userID);
 		thisClient = clients[userID];
 		console.log("registered new client", userID);
@@ -82,6 +91,12 @@ welcome.on('connection', function (socket) {
 		if (thisClient) {
 			if (thisClient.socketID === userID) {
 	    	console.log("user", thisClient.clientID, " left");
+				if (thisClient.currentgameid !== "") {
+					if (sessions[thisClient.currentgameid]) {
+						sessions[thisClient.currentgameid].currentplayers--;
+						console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
+					}
+				}
 				thisClient.logout();
 			}
 		}
@@ -99,7 +114,7 @@ welcome.on('connection', function (socket) {
 			// remove unwanted characters
 			thisClient.name = thisClient.name.replace(/<|>|&|;|#/g, "");
 			// report back actual name
-			welcome.emit('yourNameIs', thisClient.name);
+			socket.emit('yourNameIs', thisClient.name);
 		}
 	});
 	// client wants to update their color
@@ -114,7 +129,7 @@ welcome.on('connection', function (socket) {
 					thisClient.colorID = 0;
 				}
 				// report back actual newColorID
-				welcome.emit('yourColorIs', thisClient.colorID);
+				socket.emit('yourColorIs', thisClient.colorID);
 			}
 		}
 	});
@@ -123,21 +138,22 @@ welcome.on('connection', function (socket) {
 		var reducedListOfSessions = [];
 		var i = 0;
 		for (const session in sessions) {
-			reducedListOfSessions[i++] = {"name": sessions[session].name,
+			reducedListOfSessions[i++] = {"sessionid": sessions[session].id,
+			                            "name": sessions[session].name,
 			                            "currentplayers": sessions[session].currentplayers,
 																	"maxplayers": sessions[session].maxplayers,
 																	"currentpieces": sessions[session].currentpieces,
 																	"totalpieces": sessions[session].totalpieces,
 																	"bpassphrase": sessions[session].bpassphrase};
 		}
-		welcome.emit('currentListOfSessions', reducedListOfSessions);
+		socket.emit('currentListOfSessions', reducedListOfSessions);
 	});
 	// client requests to create a new session
 	const nMaximumCharactersSession = 20;
 	const nMaximumPiecesPerDirection = 50;
 	const nMaximumRetriesFindingID = 5;
 	const nMaximumPlayers = 20;
-	socket.on('iWantToStartNewSession', function(some_session_object){
+	socket.on('iWantToStartNewSession', function(some_session_object) {
 		/*iosocket.emit('iWantToStartNewSession', {"name": div_lobby_content_newgame_settings_name.value,
 																					 "bpassphrase": div_lobby_content_newgame_settings_passphrase_check.checked,
 																					 "passphrase": div_lobby_content_newgame_settings_passphrase.value,
@@ -194,7 +210,7 @@ welcome.on('connection', function (socket) {
 		if (some_session_object.motive.substr(0, 10) === "data:image") {
 			new_session_object.motive = some_session_object.motive;
 		} else {
-			// note: send alert (no session started)
+			socket.emit('alert', "The received data is no valid image file.");
 			return;
 		}
 		// make internal session id with up to 5 retries.. (this setup should prevent the creation of many "identical" sessions)
@@ -213,10 +229,32 @@ welcome.on('connection', function (socket) {
 			new_session_object.id = sessionid;
 			new_session_object.currentHost = thisClient.clientID;
 			sessions[sessionid] = new_session_object;
-			
-			// note: emit to thisclient with connection info
+
+			sessions[sessionid].currentplayers = 1;
+			thisClient.currentgameid = sessions[sessionid].id;
+			sessions[sessionid].players = [];
+			sessions[sessionid].players[0] = thisClient.clientID;
+			socket.emit('enterThisSession', {"sessionid": sessions[sessionid].id,
+																			 "motive": sessions[sessionid].motive});
+			console.log('> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
 		} else {
-			// note: send alert to user
+			socket.emit('alert', "something went wrong during session creation; maybe game already exists?");
+		}
+	});
+	// handle client request to enter specific session
+	socket.on('iWantToEnterSession', function(some_session_id) {
+		if (sessions[some_session_id]) {
+			if (sessions[some_session_id].currentplayers < sessions[some_session_id].maxplayers) {
+				sessions[some_session_id].currentplayers++;
+				thisClient.currentgameid = sessions[some_session_id].id;
+				socket.emit('enterThisSession', {"sessionid": sessions[some_session_id].id,
+																				 "motive": sessions[some_session_id].motive});
+				console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
+			} else {
+					socket.emit('alert', "This session is full.");
+			}
+		} else {
+					socket.emit('alert', "This session does not exist (anymore).");
 		}
 	});
 });
