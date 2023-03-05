@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script src="/socket.io/socket.io.js"></script>
+
+
+ <!-- <link rel="icon" href="img/_server_/logo.ico" type="image/x-icon">-->
+
+	<style>
+		body{ background-color: #555; overflow: hidden; display: block; font-family: '';font-size: 18px;}
+		.loader {
+			border: 8px solid #f3f3f3;
+			border-radius: 50%;
+			border-top: 8px solid #3498db;
+			border-bottom: 8px solid #3498db;
+			width: 120px;
+			height: 120px;
+			-webkit-animation: spin 2s linear infinite; /* Safari */
+			animation: spin 2s linear infinite;
+		}
+
+		.pulseelement {
+			animation: pulse 2s infinite;
+		}
+
+		@keyframes pulse {
+			0%{
+				transform: scale(1.0);
+			}
+			33% {
+				transform: scale(1.05);
+			}
+			100% {
+				transform: scale(1.0);
+			}
+		}
+
+		.noselect {
+			-webkit-touch-callout: none; /* iOS Safari */
+			-webkit-user-select: none; /* Safari */
+			-khtml-user-select: none; /* Konqueror HTML */
+			-moz-user-select: none; /* Old versions of Firefox */
+			-ms-user-select: none; /* Internet Explorer/Edge */
+			user-select: none; /* Non-prefixed version, currently
+			supported by Chrome, Opera and Firefox */
+		}
+
+		.colorbutton {
+			background-color: #555555;
+			border: none;
+			padding: calc(3vmin) calc(3vmin);
+			text-align: center;
+			text-decoration: none;
+			display: inline-block;
+		}
+
+		.fancybutton {
+			background-color: rgba(50,50,50,0.4);
+			border: none;
+			width: calc(4vmin);
+			padding: calc(1vmin) calc(1vmin);
+			border-radius: calc(1vmin);
+		}
+		.fancybutton:hover {
+      outline: 2px solid #ffffff;
+    }
+
+
+		.sessionlist {
+		}
+		.sessionlist tr:nth-child(odd){
+			font-size: calc(1.5vmin);
+			background-color: rgba(100,100,100,0.3);
+		}
+		.sessionlist tr:nth-child(even){
+			font-size: calc(1.5vmin);
+			background-color: rgba(200,200,200,0.3);
+		}
+		.sessionlist td {
+		  padding-top: calc(0.5vmin);
+		  padding-bottom: calc(0.5vmin);
+	  	text-align: center;
+		}
+		.sessionlist th {
+		  padding-top: calc(0.5vmin);
+		  padding-bottom: calc(0.5vmin);
+		  text-align: left;
+		  background-color: rgba(20,20,20,0.3);
+		  color: white;
+		}
+
+		.toggle_checkbox {
+			position: relative;
+			display: inline-block;
+			width: min(calc(5vmin), calc(5vw));
+			height: min(calc(3vmin), calc(3vw));
+		}
+		.toggle_checkbox input {
+			opacity: 0;
+			width: 0;
+			height: 0;
+		}
+		.slider {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+		  border-radius: calc(2vw);
+			background-color: #ccc;
+			-webkit-transition: .4s;
+			transition: .4s;
+		}
+		.slider:before {
+			position: absolute;
+			content: "";
+			height: min(calc(2.8vmin), calc(2.8vw));
+			width: min(calc(2.8vmin), calc(2.8vw));
+			left: min(calc(0.1vmin), calc(0.1vw));
+			bottom: min(calc(0.1vmin), calc(0.1vw));
+		  border-radius: 50%;
+			background-color: white;
+			-webkit-transition: .4s;
+			transition: .4s;
+		}
+		input:checked + .slider {
+			background-color: #2196F3;
+		}
+		input:checked + .slider:before {
+			-webkit-transform: translateX(min(calc(2vmin), calc(2vw)));
+			-ms-transform: translateX(min(calc(2vmin), calc(2vw)));
+			transform: translateX(min(calc(2vmin), calc(2vw)));
+		}
+	</style>
+</head>
+
+<body>
+	<div id="div_loadingscreen" style="position: fixed; display: flex; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden" class="noselect">
+		<div id="div_loadingscreen_background" style="position: absolute; background-color: #333; display: flex; justify-content: center; width: calc(15vmax); height: calc(15vmax); top: 50%">
+			<div id="div_loadingscreen_inner" style="background-color: #ccc; height: 100%; width: 0%">
+			</div>
+		</div>
+	</div>
+	<div id="div_lobby" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; visibility: hidden" class="noselect">
+		<button id="div_lobby_help" class="fancybutton" style="position:fixed; right: calc(0.5vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/helpicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+		<div id="div_lobby_header" style="display: flex; justify-content: center; z-index: 6">
+			<img src="img/logo.png" style="width: calc(40vmin); position: relative; top: calc(3vmin); z-index: 6" class="noselect pulseelement" draggable="false">
+			<!--<h1 style="color: #cccccc; font-size: calc(10vmin) ; font-weight: 900; text-shadow: -0.0075em 0.0075em #111" class="pulseelement">LOGO</h1>-->
+		</div>
+		<div id="div_lobby_content" style="display: flex; justify-content: center; height: calc(75vh); z-index: 5">
+			<div id="div_lobby_content_profile" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-left: 2%; margin-right: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
+				<h1 style="color: #ffffff; font-size: calc(5vmin)">Setup your Profile</h1>
+				<div id="div_lobby_content_profile_settings" style="padding-left: 2%; width: 100%; max-height: calc(70vh); overflow-y: auto; overflow-x: hidden;">
+					<h2 style="margin-top: 2%; margin-bottom: 1%; color: #ffffff; font-size: calc(4vmin)">Name</h2>
+	  			<input type="text" id="div_lobby_content_profile_settings_nameinput" placeholder="player name" name="div_lobby_content_profile_settings_nameinput" style="color: #ffffff; font-size: calc(4vmin); margin-left: 2.5%; width: 90%; background: rgba(50,50,50,0.5)">
+					<h2 style="color: #ffffff; margin-bottom: calc(1vmin); font-size: calc(4vmin)">Color</h2>
+					<div id="div_lobby_content_profile_settings_color" style="padding-left: 2%; width: 90%;">
+						<!--
+						<button class="colorbutton" style="margin: calc(0.5vmin)"> </button>
+						-->
+					</div>
+				</div>
+			</div>
+			<div id="div_lobby_content_games" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%; display: none">
+				<h1 style="color: #ffffff; font-size: calc(5vmin)">Listed Sessions</h1>
+				<div id="div_lobby_content_games_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
+					<button id="div_lobby_content_games_refreshlist" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/reloadicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+					<button id="div_lobby_content_games_newgame" class="fancybutton" style="position:absolute; left: calc(4.4vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/addicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+				</div>
+				<div id="div_lobby_content_games_list" style="position: absolute; margin-top: calc(4vmin); overflow-y: auto">
+				</div>
+			</div>
+			<div id="div_lobby_content_newgame" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
+				<h1 style="color: #ffffff; font-size: calc(5vmin)">New Session</h1>
+				<div id="div_lobby_content_newgame_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
+					<button id="div_lobby_content_newgame_back" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/backicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+					<button id="div_lobby_content_newgame_play" class="fancybutton" style="position: absolute; left: calc(37vmin); margin: calc(0.2vmin); display: grid; align-items: center; opacity: 0.5"><img src="img/icons/playicon.png" width="90%" style="position: relative; left: 10%" draggable="false"></button>
+				</div>
+				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: calc(44vw); height: calc(55vh); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden">
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(0.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Session Name</h2>
+	  			<input type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
+
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(7.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Passphrase</h2>
+					<div style="position: absolute; left: calc(0.15vw); top: calc(10.2vmin); transform: scale(0.7)">
+						<label class="toggle_checkbox" style="">
+							<input type="checkbox" id="div_lobby_content_newgame_settings_passphrase_check">
+							<span class="slider"></span>
+						</label>
+					</div>
+					<input type="text" id="div_lobby_content_newgame_settings_passphrase" placeholder="passphrase" style="position: absolute; left: min(calc(6.0vmin), calc(6.0vw)); top: calc(10.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(70%, 30vmin); background: rgba(50,50,50,0.5); opacity: 0.5" disable = true>
+
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(14.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Layout</h2>
+					<div style="position: absolute; left: calc(0.5vw); top: calc(17.2vmin)">
+						<input type="number" min="1" value="10" placeholder="10" id="div_lobby_content_newgame_settings_layout1" style="display: inline-block; color: #ffffff; font-size: calc(2vmin); width: min(15%, 12.0vmin); background: rgba(50,50,50,0.5)">
+						<img src="img/icons/timesicon.png" draggable="false" style="display: inline-block; width: calc(1.5vmin)">
+						<!--<p style="display: inline-block; color: #ffffff; font-size: calc(2vmin)"> X</p>-->
+						<input type="number" min="1" value="10" placeholder="10" id="div_lobby_content_newgame_settings_layout2" style="display: inline-block; color: #ffffff; font-size: calc(2vmin); width: min(15%, 12.0vmin); background: rgba(50,50,50,0.5)">
+					</div>
+
+					<h2 style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(14.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Max. Players</h2>
+					<input type="number" min="1" value="10" placeholder="10" id="div_lobby_content_newgame_settings_maxplayers" style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(17.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(15%, 12.0vmin); background: rgba(50,50,50,0.5)">
+
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Motive</h2>
+					<div style="position: absolute; left: calc(0.5vw); top: calc(24.2vmin); width: min(calc(30vw), calc(30vmin))">
+						<input type="file" id="div_lobby_content_newgame_settings_motivefile" accept="image/jpeg, image/png, image/jpg">
+						<img src="img/icons/motive_placeholder.png" id="div_lobby_content_newgame_settings_motive_preview" width=100% draggable="false">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="div_game" style="background-image: url(img/back/wood_seamless.jpeg); background-position: right 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; visibility: hidden" class="noselect"> <!--  -->
+		<div id="div_gametest" style="background-color: rgba(50,50,50,0.4); position: fixed; top: 0; left: 0; width: 50%; height: 50%" class="noselect">
+
+		</div>
+	</div>
+
+	<script src="lib/game.js"></script>
+	<script src="lib/supplements.js"></script>
+</body>
+</html>
