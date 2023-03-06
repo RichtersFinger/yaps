@@ -162,7 +162,7 @@
 					</div>
 				</div>
 			</div>
-			<div id="div_lobby_content_games" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
+			<div id="div_lobby_content_games" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%; display: none">
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">Listed Sessions</h1>
 				<div id="div_lobby_content_games_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
 					<button id="div_lobby_content_games_refreshlist" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/reloadicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
@@ -171,7 +171,7 @@
 				<div id="div_lobby_content_games_list" style="position: absolute; margin-top: calc(4vmin); overflow-y: auto">
 				</div>
 			</div>
-			<div id="div_lobby_content_newgame" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%; display: none">
+			<div id="div_lobby_content_newgame" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">New Session</h1>
 				<div id="div_lobby_content_newgame_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
 					<button id="div_lobby_content_newgame_back" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/backicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
@@ -179,7 +179,7 @@
 				</div>
 				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: calc(44vw); height: calc(55vh); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden">
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(0.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Session Name</h2>
-	  			<input type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
+	  			<input value = "test" type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
 
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(7.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Passphrase</h2>
 					<div style="position: absolute; left: calc(0.15vw); top: calc(10.2vmin); transform: scale(0.7)">
@@ -210,13 +210,14 @@
 			</div>
 		</div>
 	</div>
-	<div id="div_game" style="background-image: url(img/back/wood_seamless.jpeg); background-position: right 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none" class="noselect"> <!--  -->
+	<div id="div_game" style="background-image: url(img/back/abstract_seamless.jpeg); background-position: right 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none" class="noselect"> <!--  -->
 		<!--<div id="div_gametest" style="background-color: rgba(50,50,50,0.4); position: fixed; top: 0; left: 0; width: 50%; height: 50%" class="noselect">-->
 
 		</div>
 	</div>
 
 	<script src="lib/game.js"></script>
+	<script src="lib/puzzlepiece.js"></script>
 	<script src="lib/supplements.js"></script>
 </body>
 </html>
