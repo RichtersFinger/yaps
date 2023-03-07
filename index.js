@@ -176,16 +176,16 @@ welcome.on('connection', function (socket) {
 			reducedListOfSessions[i++] = {"sessionid": sessions[session].id,
 			                            "name": sessions[session].name,
 			                            "currentplayers": sessions[session].currentplayers,
-																	"maxplayers": sessions[session].maxplayers,
-																	"currentpieces": sessions[session].currentpieces,
-																	"totalpieces": sessions[session].totalpieces,
-																	"bpassphrase": sessions[session].bpassphrase};
+			                            "maxplayers": sessions[session].maxplayers,
+			                            "currentpieces": sessions[session].currentpieces,
+			                            "totalpieces": sessions[session].totalpieces,
+			                            "bpassphrase": sessions[session].bpassphrase};
 		}
 		socket.emit('currentListOfSessions', reducedListOfSessions);
 	});
 	// client requests to create a new session
 	const nMaximumCharactersSession = 20;
-	const nMaximumPiecesPerDirection = 50;
+	const nMaximumPiecesPerDirection = 50, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;
 	const nMaximumRetriesFindingID = 5;
 	const nMaximumPlayers = 20;
 	socket.on('iWantToStartNewSession', function(some_session_object) {
@@ -197,20 +197,22 @@ welcome.on('connection', function (socket) {
 			if (!("name" in some_session_object)
 				  || !("bpassphrase" in some_session_object)
 				  || !("passphrase" in some_session_object)
-				  || !("layout" in some_session_object)
+				  || !("piecesperlength" in some_session_object)
 				  || !("maxplayers" in some_session_object)
-				  || !("motive" in some_session_object)) {
+				  || !("motive" in some_session_object)
+				  || !("motive_res" in some_session_object)) {
 				validinputtypes = false;
 			} else {
 				if (typeof(some_session_object.name) !== 'string'
 				    || typeof(some_session_object.bpassphrase) !== 'boolean'
 				    || typeof(some_session_object.passphrase) !== 'string'
-				    || typeof(some_session_object.layout) !== 'object'
+				    || typeof(some_session_object.piecesperlength) !== 'number'
 				    || typeof(some_session_object.maxplayers) !== 'number'
-				    || typeof(some_session_object.motive) !== 'string') {
+				    || typeof(some_session_object.motive) !== 'string'
+				    || typeof(some_session_object.motive_res) !== 'object') {
 					validinputtypes = false;
 				} else {
-					if (typeof(some_session_object.layout[0]) !== 'number' || typeof(some_session_object.layout[1]) !== 'number') {
+					if (typeof(some_session_object.motive_res[0]) !== 'number' || typeof(some_session_object.motive_res[1]) !== 'number') {
 						validinputtypes = false;
 					}
 				}
@@ -240,7 +242,7 @@ welcome.on('connection', function (socket) {
 			socket.emit('alert', "something went wrong during session creation; maybe game already exists?");
 			return;
 		}
-		console.log('new session with ID ' + sessionid + ' registered by ' + thisClient.clientID);
+		console.log('new session with ID ' + sessionid + ' requested by ' + thisClient.clientID);
 		// test if all input is valid and insert into server-side object
 		new_session_object.name = some_session_object.name.replace(/<|>|&|;|#/g, "");
 		if (new_session_object.name.length > nMaximumCharactersSession) {
@@ -248,33 +250,18 @@ welcome.on('connection', function (socket) {
 		}
 		new_session_object.bpassphrase = some_session_object.bpassphrase;
 		new_session_object.passphrase = some_session_object.passphrase;
-		var num1 = 1, num2 = 1;
-		if (some_session_object.layout.length === 2) {
-			if (Number.isInteger(some_session_object.layout[0])) {
-				if (some_session_object.layout[0] >= 1 && some_session_object.layout[0] <= nMaximumPiecesPerDirection) {
-					num1 = some_session_object.layout[0];
-				} else {
-					num1 = 10;
-				}
+		if (Number.isInteger(some_session_object.piecesperlength)) {
+			if (some_session_object.piecesperlength >= nMinimumPiecesLongDirection && some_session_object.piecesperlength <= nMaximumPiecesPerDirection) {
+				new_session_object.piecesperlength = some_session_object.piecesperlength;
 			} else {
-				num1 = 10;
-			}
-			if (Number.isInteger(some_session_object.layout[1])) {
-				if (some_session_object.layout[1] >= 1 && some_session_object.layout[1] <= nMaximumPiecesPerDirection) {
-					num2 = some_session_object.layout[1];
-				} else {
-					num2 = 10;
-				}
-			} else {
-				num2 = 10;
+				socket.emit('alert', "Number of pieces in long edge out of range.");
+				return;
 			}
 		} else {
-			num1 = 10;
-			num2 = 10;
+			socket.emit('alert', "Invalid setting for number of pieces in long edge.");
+			return;
 		}
-		new_session_object.layout = [num1, num2];
-		new_session_object.currentpieces = 0;
-		new_session_object.totalpieces = num1*num2;
+
 		var maxplayers = 1;
 		if (Number.isInteger(some_session_object.maxplayers)) {
 			if (some_session_object.maxplayers >= 1 && some_session_object.maxplayers <= nMaximumPlayers) {
@@ -293,14 +280,51 @@ welcome.on('connection', function (socket) {
 		if (some_session_object.motive.substr(0, 10) === "data:image") {
 			// as url
 			var filepath = "tmp/motive_" + sessionid; // + "." + some_session_object.motive.substring(some_session_object.motive.indexOf('/') + 1, some_session_object.motive.indexOf(';base64'));
-			saveimagetofile(some_session_object.motive, filepath);
-			new_session_object.motive = filepath;
-			// as data-string
-			new_session_object.motive_base64 = some_session_object.motive;
+			var saveimage_response = saveimagetofile(some_session_object.motive, filepath);
+			if (saveimage_response.success) {
+				new_session_object.motive = filepath;
+				// also save as data-string
+				new_session_object.motive_base64 = some_session_object.motive;
+				if (Number.isInteger(some_session_object.motive_res[0]) && Number.isInteger(some_session_object.motive_res[1])) {
+					new_session_object.layout = [];
+					// use longer edge of image for piecesperlength setting
+					if (some_session_object.motive_res[1] > some_session_object.motive_res[0]) {
+						new_session_object.layout[1] = new_session_object.piecesperlength;
+						new_session_object.layout[0] = Math.floor(0.5 + some_session_object.motive_res[0]/some_session_object.motive_res[1]*new_session_object.piecesperlength);
+					} else {
+						new_session_object.layout[0] = new_session_object.piecesperlength;
+						new_session_object.layout[1] = Math.floor(0.5 + some_session_object.motive_res[1]/some_session_object.motive_res[0]*new_session_object.piecesperlength);
+					}
+					// check whether resulting puzzle resolution is fine
+					if (Math.min(new_session_object.layout[0], new_session_object.layout[1]) < nMinimumPiecesShortDirection) {
+							socket.emit('alert', "Requested puzzle resolution too small (" + new_session_object.layout[0] + ", " + new_session_object.layout[1] + ").");
+							return;
+					}
+					// layout is okay > set total number of pieces
+					new_session_object.currentpieces = 0;
+					new_session_object.totalpieces = new_session_object.layout[0]*new_session_object.layout[1];
+
+					if (some_session_object.motive_res[0] > 5*new_session_object.layout[0] && some_session_object.motive_res[1] > 5*new_session_object.layout[1]) {
+						new_session_object.motive_res = [];
+						new_session_object.motive_res[0] = some_session_object.motive_res[0];
+						new_session_object.motive_res[1] = some_session_object.motive_res[1];
+					} else {
+						socket.emit('alert', "Image resolution insufficient for given layout.");
+						return;
+					}
+				} else {
+					socket.emit('alert', "Bad info on image resolution.");
+					return;
+				}
+			} else {
+				socket.emit('alert', "Error when reading image file.");
+				return;
+			}
 		} else {
 			socket.emit('alert', "The received data is no valid image file.");
 			return;
 		}
+
 
 		// add some more info to session object
 		new_session_object.id = sessionid;
@@ -313,7 +337,7 @@ welcome.on('connection', function (socket) {
 		sessions[sessionid].players[0] = thisClient.clientID;
 		// signal host to enter game
 		socket.emit('enterThisSession', {"sessionid": sessions[sessionid].id,
-																		 "motive": sessions[sessionid].motive});
+		                                 "motive": sessions[sessionid].motive});
 		console.log('> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
 	});
 	// handle client request to enter specific session
@@ -335,10 +359,10 @@ welcome.on('connection', function (socket) {
 																					 "motive": sessions[some_session_id].motive});
 					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
 				} else {
-						socket.emit('alert', "This session is full.");
+					socket.emit('alert', "This session is full.");
 				}
 			} else {
-						socket.emit('alert', "This session does not exist (anymore).");
+				socket.emit('alert', "This session does not exist (anymore).");
 			}
 		}
 	});
@@ -355,10 +379,10 @@ function saveimagetofile(image, filepath) {
 	// try to save
 	try {
 		fs.writeFileSync(filepath, bitmap);
-		return true;
+		return {"success": true, "buffer": bitmap};
 	} catch(err) {
 		console.log('some error occured when trying to save base64 to file', err);
-		return false;
+		return {"success": false, "buffer": bitmap};
 	}
 }
 
