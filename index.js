@@ -1,4 +1,4 @@
-const version = "0.3";
+const version = "0.5";
 
 
 // load and setup prerequisites
@@ -333,7 +333,7 @@ welcome.on('connection', function (socket) {
 
 
 		// everything seems fine; initialize puzzle object
-		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {}, new_session_object.motive, puzzlepiece);
+		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "flat"}, new_session_object.motive, puzzlepiece);
 		// dimxy, lxy
 
 		// add some more info to session object
@@ -356,6 +356,10 @@ welcome.on('connection', function (socket) {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
 			return;
 		}
+		// note: check and handle player still being registered in different game..
+		if (thisClient.currentgameid !== "") {
+			// ...
+		}
 		// check if session id valid and this session exists
 		if (typeof(some_session_id) === 'string') {
 			if (typeof(sessions[some_session_id]) !== 'undefined') {
@@ -365,12 +369,89 @@ welcome.on('connection', function (socket) {
 					sessions[some_session_id].currentplayers++;
 					thisClient.currentgameid = sessions[some_session_id].id;
 					socket.emit('enterThisSession', getfullsessionobject(some_session_id));
+					sessions[some_session_id].players.push(thisClient.clientID);
 					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
 				} else {
 					socket.emit('alert', "This session is full.");
 				}
 			} else {
 				socket.emit('alert', "This session does not exist (anymore).");
+			}
+		}
+	});
+
+	// handle client request to pick up piece
+	socket.on('iWantToPickUpPiece', function(i, j) {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'Not logged in. Try reconnecting by refreshing page.');
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				// are tile indices valid?
+				if (typeof(i) === 'number' && typeof(j) === 'number') {
+					if (Number.isInteger(i) && Number.isInteger(j)) {
+						if (i >= 0 && i < sessions[thisClient.currentgameid].puzzle.layout[0]
+						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
+							// is tile not picked up by anyone yet?
+							// note: check other pieces in same partition at this point
+							// note: implement timeout so that tile is dropped eventually automatically
+							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) === 'undefined') {
+								// claim this piece as held
+								sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
+								thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
+								socket.emit('startMovingPiece', i, j);
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+	// handle client request to drop piece
+	socket.on('iWantToDropPiece', function() {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'Not logged in. Try reconnecting by refreshing page.');
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+					// release claim
+					// note: also revert claim on other tiles from same partition
+					thisClient.holdsPiece.heldby = undefined;
+					thisClient.holdsPiece = undefined;
+					socket.emit('stopMovingPiece');
+					// note: check for new connection with correct neighbors
+				}
+			}
+		}
+	});
+	// handle client request to move piece
+	socket.on('iWantToMoveMyPiece', function(x, y, angle) {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'Not logged in. Try reconnecting by refreshing page.');
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+					// update piece coordinates
+					thisClient.holdsPiece.x = x;
+					thisClient.holdsPiece.y = y;
+					thisClient.holdsPiece.angle = angle;
+					// note: also update other tiles in the same partition
+					// note: send updated info to other players in this session
+				}
 			}
 		}
 	});
@@ -399,6 +480,7 @@ function getfullsessionobject(someSessionID) {
 			pieces[i][j] = {};
 			pieces[i][j]["x"] = sessions[someSessionID].puzzle.pieces[i][j].x;
 			pieces[i][j]["y"] = sessions[someSessionID].puzzle.pieces[i][j].y;
+			pieces[i][j]["z"] = sessions[someSessionID].puzzle.pieces[i][j].z;
 			pieces[i][j]["angle"] = sessions[someSessionID].puzzle.pieces[i][j].angle;
 			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
 		// this is done client-side via puzzle seed
