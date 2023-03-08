@@ -48,8 +48,11 @@ app.use("/tmp", express.static('tmp')); // tmp-directory contains the individual
 
 // load additional modules
 const rng = require('./lib/rng.js');
-const somerng = new rng;
+const thisrng = new rng;
+thisrng.seed(Date.now());
 const client = require('./lib/client.js');
+const puzzlepiece = require('./lib/puzzlepiece_server.js');
+const puzzle = require('./lib/puzzle_server.js');
 
 var clients = {};
 const nMaximumCharactersSessionName = 20;
@@ -288,12 +291,15 @@ welcome.on('connection', function (socket) {
 				if (Number.isInteger(some_session_object.motive_res[0]) && Number.isInteger(some_session_object.motive_res[1])) {
 					new_session_object.layout = [];
 					// use longer edge of image for piecesperlength setting
+					// also temporarily store appropriate puzzledimensions in new_session_object; later: puzzle.dimensions
 					if (some_session_object.motive_res[1] > some_session_object.motive_res[0]) {
 						new_session_object.layout[1] = new_session_object.piecesperlength;
 						new_session_object.layout[0] = Math.floor(0.5 + some_session_object.motive_res[0]/some_session_object.motive_res[1]*new_session_object.piecesperlength);
+						new_session_object.puzzledimensions = [some_session_object.motive_res[0]/some_session_object.motive_res[1], 1.0];
 					} else {
 						new_session_object.layout[0] = new_session_object.piecesperlength;
 						new_session_object.layout[1] = Math.floor(0.5 + some_session_object.motive_res[1]/some_session_object.motive_res[0]*new_session_object.piecesperlength);
+						new_session_object.puzzledimensions = [1.0, some_session_object.motive_res[1]/some_session_object.motive_res[0]];
 					}
 					// check whether resulting puzzle resolution is fine
 					if (Math.min(new_session_object.layout[0], new_session_object.layout[1]) < nMinimumPiecesShortDirection) {
@@ -326,6 +332,10 @@ welcome.on('connection', function (socket) {
 		}
 
 
+		// everything seems fine; initialize puzzle object
+		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {}, new_session_object.motive, puzzlepiece);
+		// dimxy, lxy
+
 		// add some more info to session object
 		new_session_object.id = sessionid;
 		new_session_object.currentHost = thisClient.clientID;
@@ -336,8 +346,7 @@ welcome.on('connection', function (socket) {
 		sessions[sessionid].players = [];
 		sessions[sessionid].players[0] = thisClient.clientID;
 		// signal host to enter game
-		socket.emit('enterThisSession', {"sessionid": sessions[sessionid].id,
-		                                 "motive": sessions[sessionid].motive});
+		socket.emit('enterThisSession', getfullsessionobject(sessionid));
 		console.log('> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
 	});
 	// handle client request to enter specific session
@@ -355,8 +364,7 @@ welcome.on('connection', function (socket) {
 					// send info to client
 					sessions[some_session_id].currentplayers++;
 					thisClient.currentgameid = sessions[some_session_id].id;
-					socket.emit('enterThisSession', {"sessionid": sessions[some_session_id].id,
-																					 "motive": sessions[some_session_id].motive});
+					socket.emit('enterThisSession', getfullsessionobject(some_session_id));
 					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
 				} else {
 					socket.emit('alert', "This session is full.");
@@ -372,6 +380,35 @@ welcome.on('connection', function (socket) {
 server.listen(port, function(){
 	console.log("Listening on port " +  port);
 });
+
+// format full client-side info on session/puzzle into object
+function getfullsessionobject(someSessionID) {
+	var somesession = {};
+	var somepuzzle = {};
+	somesession["id"] = someSessionID;
+	somesession["puzzle"] = somepuzzle;
+	somepuzzle["layout"] = sessions[someSessionID].puzzle.layout;
+	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
+	somepuzzle["seed"] = sessions[someSessionID].puzzle.seed;
+	somepuzzle["style"] = sessions[someSessionID].puzzle.style;
+	somepuzzle["motive"] = sessions[someSessionID].puzzle.motive;
+	var pieces = [];
+	for (var i = 0; i < somepuzzle.layout[0]; i++) {
+		pieces[i] = [];
+		for (var j = 0; j < somepuzzle.layout[1]; j++) {
+			pieces[i][j] = {};
+			pieces[i][j]["x"] = sessions[someSessionID].puzzle.pieces[i][j].x;
+			pieces[i][j]["y"] = sessions[someSessionID].puzzle.pieces[i][j].y;
+			pieces[i][j]["angle"] = sessions[someSessionID].puzzle.pieces[i][j].angle;
+			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
+		// this is done client-side via puzzle seed
+		//	pieces[i][j]["w"] = sessions[someSessionID].puzzle.pieces[i][j].w;
+		//	pieces[i][j]["h"] = sessions[someSessionID].puzzle.pieces[i][j].h;
+		}
+	}
+	somepuzzle["pieces"] = pieces;
+	return somesession;
+}
 
 // encode base64-image, save to file
 function saveimagetofile(image, filepath) {
