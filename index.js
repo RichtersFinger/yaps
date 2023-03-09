@@ -124,6 +124,13 @@ welcome.on('connection', function (socket) {
 			if (thisClient.currentgameid !== "") {
 				if (sessions[thisClient.currentgameid]) {
 					sessions[thisClient.currentgameid].currentplayers--;
+					// also revert claim on player-held tiles if any
+					if (typeof(thisClient) !== 'undefined') {
+						if (typeof(thisClient.holdsPiece) !== 'undefined') {
+							clearTimeout(thisClient.heldPieceTimeout);
+							claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
+						}
+					}
 					console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
 					thisClient.currentgameid = "";
 				}
@@ -334,7 +341,10 @@ welcome.on('connection', function (socket) {
 
 		// everything seems fine; initialize puzzle object
 		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "flat"}, new_session_object.motive, puzzlepiece);
-		// dimxy, lxy
+
+		// distribute tiles over game div; for now only fixed setting..
+		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
+
 
 		// add some more info to session object
 		new_session_object.id = sessionid;
@@ -422,22 +432,41 @@ welcome.on('connection', function (socket) {
 							// note: check other pieces in same partition at this point
 							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) === 'undefined') {
 								// claim this piece as held
-								// claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
 								sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
 								thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
 								thisClient.holdsPiece.z = sessions[thisClient.currentgameid].puzzle.maximumz++;
-								socket.emit('startMovingPiece', i, j, thisClient.holdsPiece.z);
+								// apply claim to all pieces in same partition
+								claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+								// inform clients to highlight tile accordingly
+								for (const client of sessions[thisClient.currentgameid].players) {
+									if (typeof(clients[client]) !== 'undefined') {
+										welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+									}
+								}
+
 								// timeout so that tile is dropped eventually automatically
 								let clientwasholdingthis = thisClient.holdsPiece;
 								thisClient.heldPieceTimeout = setTimeout(function() {
 									if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 										socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+
+										for (const client of sessions[thisClient.currentgameid].players) {
+											if (typeof(clients[client]) !== 'undefined') {
+												for (const piece of thisClient.holdsPiece.partition.pieces) {
+													welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+													                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+												}
+											}
+											// remove highlight of held piece
+											welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+										}
 										thisClient.holdsPiece.heldby = undefined;
 										thisClient.holdsPiece = undefined;
+										// also revert claim on other tiles from same partition
+										claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
 									}
-									// note: also revert claim on other tiles from same partition
-									// unclaimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
 								}, 20000);
+								socket.emit('startMovingPiece', i, j, thisClient.holdsPiece.z);
 							}
 						}
 					}
@@ -460,11 +489,13 @@ welcome.on('connection', function (socket) {
 					// release claim
 					// note: also revert claim on other tiles from same partition
 					// claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
+					clearTimeout(thisClient.heldPieceTimeout);
 					socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 					var thisPiece = thisClient.holdsPiece;
 					thisClient.holdsPiece.heldby = undefined;
 					thisClient.holdsPiece = undefined;
-					clearTimeout(thisClient.heldPieceTimeout);
+					// also revert claim on other tiles from same partition
+					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisPiece.partition);
 
 					// check for new connection with direct neighbors
 					if (sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece)) {
@@ -493,6 +524,12 @@ welcome.on('connection', function (socket) {
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 								}
 							}
+						}
+					}
+					// remove highlight of held piece
+					for (const client of sessions[thisClient.currentgameid].players) {
+						if (typeof(clients[client]) !== 'undefined') {
+							welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
 						}
 					}
 				}
@@ -534,7 +571,9 @@ server.listen(port, function(){
 	console.log("Listening on port " +  port);
 });
 
+// function to format puzzle partitioning in a form that can be send to clients
 function getClientSidePartitionObject(somepuzzle) {
+	// result is an array of partitions, which themselves are arrays of pieces
 	var result = [];
 	for (const partition in somepuzzle.partitions) {
 		var thispartition = [];
