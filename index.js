@@ -371,11 +371,33 @@ welcome.on('connection', function (socket) {
 					socket.emit('enterThisSession', getfullsessionobject(some_session_id));
 					sessions[some_session_id].players.push(thisClient.clientID);
 					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
+					// note: send more info (partitions, ??) | implement that as client signaling that they want an update
 				} else {
 					socket.emit('alert', "This session is full.");
 				}
 			} else {
 				socket.emit('alert', "This session does not exist (anymore).");
+			}
+		}
+	});
+	// handle client request to enter specific session
+	socket.on('iNeedAnUpdate', function() {
+		// deny if not registered yet
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'not logged in yet, try refreshing page');
+			return;
+		}
+
+		// check if session id valid and this session exists
+		if (typeof(thisClient.currentgameid) === 'string') {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				for (var i = 0; i < sessions[thisClient.currentgameid].puzzle.layout[0]; i++) {
+					for (var j = 0; j < sessions[thisClient.currentgameid].puzzle.layout[1]; j++) {
+						piece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
+						socket.emit('updatePieceCoordinates', piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+					}
+				}
+				socket.emit('updatePuzzlePartitions', getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle));
 			}
 		}
 	});
@@ -406,8 +428,9 @@ welcome.on('connection', function (socket) {
 								thisClient.holdsPiece.z = sessions[thisClient.currentgameid].puzzle.maximumz++;
 								socket.emit('startMovingPiece', i, j, thisClient.holdsPiece.z);
 								// timeout so that tile is dropped eventually automatically
+								let clientwasholdingthis = thisClient.holdsPiece;
 								thisClient.heldPieceTimeout = setTimeout(function() {
-									if (thisClient.holdsPiece) {
+									if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 										socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 										thisClient.holdsPiece.heldby = undefined;
 										thisClient.holdsPiece = undefined;
@@ -441,8 +464,37 @@ welcome.on('connection', function (socket) {
 					var thisPiece = thisClient.holdsPiece;
 					thisClient.holdsPiece.heldby = undefined;
 					thisClient.holdsPiece = undefined;
+					clearTimeout(thisClient.heldPieceTimeout);
+
 					// check for new connection with direct neighbors
-					sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece);
+					if (sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece)) {
+						// send updated info to other players in this session
+						for (const client of sessions[thisClient.currentgameid].players) {
+							if (typeof(clients[client]) !== 'undefined') {
+								for (const piece of thisPiece.partition.pieces) {
+									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+								}
+
+								// also submit new partition info
+								var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
+								welcome.to(clients[client].socketID).emit('updatePuzzlePartitions', currentpartitions);
+							}
+						}
+					} else {
+						// only update piece positions in this partition
+						for (const piece of thisPiece.partition.pieces) {
+							piece.x = thisPiece.x + (piece.x0 - thisPiece.x0);
+							piece.y = thisPiece.y + (piece.y0 - thisPiece.y0);
+							// send info to clients
+							for (const client of sessions[thisClient.currentgameid].players) {
+								if (typeof(clients[client]) !== 'undefined') {
+									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -482,6 +534,18 @@ server.listen(port, function(){
 	console.log("Listening on port " +  port);
 });
 
+function getClientSidePartitionObject(somepuzzle) {
+	var result = [];
+	for (const partition in somepuzzle.partitions) {
+		var thispartition = [];
+		for (const piece of somepuzzle.partitions[partition].pieces) {
+			thispartition.push([piece.i, piece.j]);
+		}
+		result.push(thispartition);
+	}
+	return result;
+}
+
 // applies/remove claim to hold puzzle piece to all tiles in a partition
 function claimAllPiecesWithinPartition(someSession, someClient, somePartition) {
 	for (const piece of somePartition.pieces) {
@@ -508,6 +572,8 @@ function getfullsessionobject(someSessionID) {
 			pieces[i][j] = {};
 			pieces[i][j]["x"] = sessions[someSessionID].puzzle.pieces[i][j].x;
 			pieces[i][j]["y"] = sessions[someSessionID].puzzle.pieces[i][j].y;
+			pieces[i][j]["x0"] = sessions[someSessionID].puzzle.pieces[i][j].x0;
+			pieces[i][j]["y0"] = sessions[someSessionID].puzzle.pieces[i][j].y0;
 			pieces[i][j]["z"] = sessions[someSessionID].puzzle.pieces[i][j].z;
 			pieces[i][j]["angle"] = sessions[someSessionID].puzzle.pieces[i][j].angle;
 			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
