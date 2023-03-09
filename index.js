@@ -398,12 +398,23 @@ welcome.on('connection', function (socket) {
 						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
 							// is tile not picked up by anyone yet?
 							// note: check other pieces in same partition at this point
-							// note: implement timeout so that tile is dropped eventually automatically
 							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) === 'undefined') {
 								// claim this piece as held
+								// claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
 								sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
 								thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
-								socket.emit('startMovingPiece', i, j);
+								thisClient.holdsPiece.z = sessions[thisClient.currentgameid].puzzle.maximumz++;
+								socket.emit('startMovingPiece', i, j, thisClient.holdsPiece.z);
+								// timeout so that tile is dropped eventually automatically
+								thisClient.heldPieceTimeout = setTimeout(function() {
+									if (thisClient.holdsPiece) {
+										socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+										thisClient.holdsPiece.heldby = undefined;
+										thisClient.holdsPiece = undefined;
+									}
+									// note: also revert claim on other tiles from same partition
+									// unclaimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
+								}, 20000);
 							}
 						}
 					}
@@ -425,10 +436,13 @@ welcome.on('connection', function (socket) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
 					// release claim
 					// note: also revert claim on other tiles from same partition
+					// claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
+					socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+					var thisPiece = thisClient.holdsPiece;
 					thisClient.holdsPiece.heldby = undefined;
 					thisClient.holdsPiece = undefined;
-					socket.emit('stopMovingPiece');
-					// note: check for new connection with correct neighbors
+					// check for new connection with direct neighbors
+					sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece);
 				}
 			}
 		}
@@ -450,7 +464,13 @@ welcome.on('connection', function (socket) {
 					thisClient.holdsPiece.y = y;
 					thisClient.holdsPiece.angle = angle;
 					// note: also update other tiles in the same partition
-					// note: send updated info to other players in this session
+					// send updated info to other players in this session
+					for (const client of sessions[thisClient.currentgameid].players) {
+						if (typeof(clients[client]) !== 'undefined' && client !== thisClient.clientID) {
+							welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+							                                          thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+						}
+					}
 				}
 			}
 		}
@@ -461,6 +481,14 @@ welcome.on('connection', function (socket) {
 server.listen(port, function(){
 	console.log("Listening on port " +  port);
 });
+
+// applies/remove claim to hold puzzle piece to all tiles in a partition
+function claimAllPiecesWithinPartition(someSession, someClient, somePartition) {
+	for (const piece of somePartition.pieces) {
+		piece.heldby = someClient;
+		piece.z = someSession.puzzle.maximumz++;
+	}
+}
 
 // format full client-side info on session/puzzle into object
 function getfullsessionobject(someSessionID) {
