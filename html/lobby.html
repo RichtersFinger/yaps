@@ -206,7 +206,13 @@
 		</div>
 	</div>
 	<div id="div_game" style="background-image: url(img/back/abstract_seamless.jpeg); background-position: right 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none" class="noselect"> <!--; background-repeat: no-repeat  -->
-
+		<div id="div_game_progress" style="position: fixed; z-index: 2147483640; right: calc(0.5vmin); top: calc(0.5vmin); margin: 0; padding: 0; border-radius: calc(1vmin); background: rgba(50,50,50,0.5)">
+			<p id="div_game_progress_label" style="font-family: Arial, sans-serif; color: #ffffff; font-size: calc(4vmin); margin: 0; padding-right: calc(1vmin); padding-left: calc(2vmin); padding-top: calc(1vmin); padding-bottom: calc(1vmin)"> </p>
+		</div>
+		<button id="div_game_interface_help" class="fancybutton" style="position:fixed; z-index: 2147483640; right: calc(0.5vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/helpicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+		<button id="div_game_interface_list" class="fancybutton" style="position:fixed; z-index: 2147483640; right: calc(5.5vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/listicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+		<button id="div_game_interface_settings" class="fancybutton" style="position:fixed; z-index: 2147483640; right: calc(10.5vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/gearicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
+		<button id="div_game_interface_back" class="fancybutton" style="position:fixed; z-index: 2147483640; left: calc(0.5vmin); top: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/backicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
 	</div>
 
 	<script src="lib/game.js"></script>

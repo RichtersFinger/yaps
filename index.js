@@ -187,8 +187,8 @@ welcome.on('connection', function (socket) {
 			                            "name": sessions[session].name,
 			                            "currentplayers": sessions[session].currentplayers,
 			                            "maxplayers": sessions[session].maxplayers,
-			                            "currentpieces": sessions[session].currentpieces,
-			                            "totalpieces": sessions[session].totalpieces,
+			                            "currentconnections": sessions[session].currentconnections,
+			                            "totalconnections": sessions[session].totalconnections,
 			                            "bpassphrase": sessions[session].bpassphrase};
 		}
 		socket.emit('currentListOfSessions', reducedListOfSessions);
@@ -313,9 +313,6 @@ welcome.on('connection', function (socket) {
 							socket.emit('alert', "Requested puzzle resolution too small (" + new_session_object.layout[0] + ", " + new_session_object.layout[1] + ").");
 							return;
 					}
-					// layout is okay > set total number of pieces
-					new_session_object.currentpieces = 0;
-					new_session_object.totalpieces = new_session_object.layout[0]*new_session_object.layout[1];
 
 					if (some_session_object.motive_res[0] > 5*new_session_object.layout[0] && some_session_object.motive_res[1] > 5*new_session_object.layout[1]) {
 						new_session_object.motive_res = [];
@@ -341,6 +338,9 @@ welcome.on('connection', function (socket) {
 
 		// everything seems fine; initialize puzzle object
 		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "flat"}, new_session_object.motive, puzzlepiece);
+		// set total number of connections
+		new_session_object.currentconnections = 0;
+		new_session_object.totalconnections = new_session_object.puzzle.totaledges;
 
 		// distribute tiles over game div; for now only fixed setting..
 		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
@@ -510,6 +510,10 @@ welcome.on('connection', function (socket) {
 								// also submit new partition info
 								var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
 								welcome.to(clients[client].socketID).emit('updatePuzzlePartitions', currentpartitions);
+
+								// also submit new progress
+								sessions[thisClient.currentgameid].currentconnections = sessions[thisClient.currentgameid].puzzle.connectededges;
+								welcome.to(clients[client].socketID).emit('updatePuzzleProgress', sessions[thisClient.currentgameid].currentconnections);
 							}
 						}
 					} else {
@@ -564,6 +568,40 @@ welcome.on('connection', function (socket) {
 			}
 		}
 	});
+	// handle client request to leave game session
+	socket.on('iWantToLeaveMySession', function() {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'Not logged in. Try reconnecting by refreshing page.');
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				// drop currently held piece (if any)
+				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+					clearTimeout(thisClient.heldPieceTimeout);
+					// revert claim on other tiles from same partition
+					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
+					// remove highlight of held piece
+					for (const client of sessions[thisClient.currentgameid].players) {
+						if (typeof(clients[client]) !== 'undefined') {
+							welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+						}
+					}
+					thisClient.holdsPiece = undefined;
+				}
+
+				// remove client from player list
+				sessions[thisClient.currentgameid].currentplayers--;
+				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
+				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
+				thisClient.currentgameid = "";
+			}
+		}
+		socket.emit('youCanLeave');
+	});
 });
 
 // start listening for clients
@@ -598,6 +636,8 @@ function getfullsessionobject(someSessionID) {
 	var somesession = {};
 	var somepuzzle = {};
 	somesession["id"] = someSessionID;
+	somesession["currentconnections"] = sessions[someSessionID].puzzle.connectededges;
+	somesession["totalconnections"] = sessions[someSessionID].puzzle.totaledges;
 	somesession["puzzle"] = somepuzzle;
 	somepuzzle["layout"] = sessions[someSessionID].puzzle.layout;
 	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
