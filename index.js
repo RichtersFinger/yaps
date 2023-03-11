@@ -16,7 +16,7 @@ var io = require('socket.io')(server, {
 const fs = require('fs');
 const path = require("path");
 const tmpdir = "tmp";
-// prepare/cleanup temporary directory (used to store uploaded puzzle motive images)
+// prepare/cleanup temporary directory (used to store uploaded puzzle motif images)
 if (!fs.existsSync(tmpdir)){
     fs.mkdirSync(tmpdir);
 } else {
@@ -42,7 +42,7 @@ app.get('/', function(req, res){
 app.use("/img", express.static('img'));
 app.use("/lib", express.static('lib'));
 app.use("/sfx", express.static('sfx'));
-app.use("/tmp", express.static('tmp')); // tmp-directory contains the individual session's puzzle motives
+app.use("/tmp", express.static('tmp')); // tmp-directory contains the individual session's puzzle motifs
 
 //app.use('/favicon.ico', express.static('img/_server_/logo.ico'));
 
@@ -209,8 +209,8 @@ welcome.on('connection', function (socket) {
 				  || !("passphrase" in some_session_object)
 				  || !("piecesperlength" in some_session_object)
 				  || !("maxplayers" in some_session_object)
-				  || !("motive" in some_session_object)
-				  || !("motive_res" in some_session_object)) {
+				  || !("motif" in some_session_object)
+				  || !("motif_res" in some_session_object)) {
 				validinputtypes = false;
 			} else {
 				if (typeof(some_session_object.name) !== 'string'
@@ -218,11 +218,11 @@ welcome.on('connection', function (socket) {
 				    || typeof(some_session_object.passphrase) !== 'string'
 				    || typeof(some_session_object.piecesperlength) !== 'number'
 				    || typeof(some_session_object.maxplayers) !== 'number'
-				    || typeof(some_session_object.motive) !== 'string'
-				    || typeof(some_session_object.motive_res) !== 'object') {
+				    || typeof(some_session_object.motif) !== 'string'
+				    || typeof(some_session_object.motif_res) !== 'object') {
 					validinputtypes = false;
 				} else {
-					if (typeof(some_session_object.motive_res[0]) !== 'number' || typeof(some_session_object.motive_res[1]) !== 'number') {
+					if (typeof(some_session_object.motif_res[0]) !== 'number' || typeof(some_session_object.motif_res[1]) !== 'number') {
 						validinputtypes = false;
 					}
 				}
@@ -242,7 +242,7 @@ welcome.on('connection', function (socket) {
 		var sessionid;
 		var foundValidID = false;
 		for (var i = 0; i < nMaximumRetriesFindingID; i++) {
-			sessionid = gethash(some_session_object.name + some_session_object.motive + i);
+			sessionid = gethash(some_session_object.name + some_session_object.motif + i);
 			if (typeof(sessions[sessionid]) === 'undefined') {
 				foundValidID = true;
 				break;
@@ -285,28 +285,28 @@ welcome.on('connection', function (socket) {
 		new_session_object.currentplayers = 0;
 		new_session_object.maxplayers = maxplayers;
 
-		// check if valid motive data; write to file
+		// check if valid motif data; write to file
 		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
-		if (some_session_object.motive.substr(0, 10) === "data:image") {
+		if (some_session_object.motif.substr(0, 10) === "data:image") {
 			// as url
-			var filepath = "tmp/motive_" + sessionid; // + "." + some_session_object.motive.substring(some_session_object.motive.indexOf('/') + 1, some_session_object.motive.indexOf(';base64'));
-			var saveimage_response = saveimagetofile(some_session_object.motive, filepath);
+			var filepath = "tmp/motif_" + sessionid; // + "." + some_session_object.motif.substring(some_session_object.motif.indexOf('/') + 1, some_session_object.motif.indexOf(';base64'));
+			var saveimage_response = saveimagetofile(some_session_object.motif, filepath);
 			if (saveimage_response.success) {
-				new_session_object.motive = filepath;
+				new_session_object.motif = filepath;
 				// also save as data-string
-				new_session_object.motive_base64 = some_session_object.motive;
-				if (Number.isInteger(some_session_object.motive_res[0]) && Number.isInteger(some_session_object.motive_res[1])) {
+				new_session_object.motif_base64 = some_session_object.motif;
+				if (Number.isInteger(some_session_object.motif_res[0]) && Number.isInteger(some_session_object.motif_res[1])) {
 					new_session_object.layout = [];
 					// use longer edge of image for piecesperlength setting
 					// also temporarily store appropriate puzzledimensions in new_session_object; later: puzzle.dimensions
-					if (some_session_object.motive_res[1] > some_session_object.motive_res[0]) {
+					if (some_session_object.motif_res[1] > some_session_object.motif_res[0]) {
 						new_session_object.layout[1] = new_session_object.piecesperlength;
-						new_session_object.layout[0] = Math.floor(0.5 + some_session_object.motive_res[0]/some_session_object.motive_res[1]*new_session_object.piecesperlength);
-						new_session_object.puzzledimensions = [some_session_object.motive_res[0]/some_session_object.motive_res[1], 1.0];
+						new_session_object.layout[0] = Math.floor(0.5 + some_session_object.motif_res[0]/some_session_object.motif_res[1]*new_session_object.piecesperlength);
+						new_session_object.puzzledimensions = [some_session_object.motif_res[0]/some_session_object.motif_res[1], 1.0];
 					} else {
 						new_session_object.layout[0] = new_session_object.piecesperlength;
-						new_session_object.layout[1] = Math.floor(0.5 + some_session_object.motive_res[1]/some_session_object.motive_res[0]*new_session_object.piecesperlength);
-						new_session_object.puzzledimensions = [1.0, some_session_object.motive_res[1]/some_session_object.motive_res[0]];
+						new_session_object.layout[1] = Math.floor(0.5 + some_session_object.motif_res[1]/some_session_object.motif_res[0]*new_session_object.piecesperlength);
+						new_session_object.puzzledimensions = [1.0, some_session_object.motif_res[1]/some_session_object.motif_res[0]];
 					}
 					// check whether resulting puzzle resolution is fine
 					if (Math.min(new_session_object.layout[0], new_session_object.layout[1]) < nMinimumPiecesShortDirection) {
@@ -314,10 +314,10 @@ welcome.on('connection', function (socket) {
 							return;
 					}
 
-					if (some_session_object.motive_res[0] > 5*new_session_object.layout[0] && some_session_object.motive_res[1] > 5*new_session_object.layout[1]) {
-						new_session_object.motive_res = [];
-						new_session_object.motive_res[0] = some_session_object.motive_res[0];
-						new_session_object.motive_res[1] = some_session_object.motive_res[1];
+					if (some_session_object.motif_res[0] > 5*new_session_object.layout[0] && some_session_object.motif_res[1] > 5*new_session_object.layout[1]) {
+						new_session_object.motif_res = [];
+						new_session_object.motif_res[0] = some_session_object.motif_res[0];
+						new_session_object.motif_res[1] = some_session_object.motif_res[1];
 					} else {
 						socket.emit('alert', "Image resolution insufficient for given layout.");
 						return;
@@ -337,12 +337,15 @@ welcome.on('connection', function (socket) {
 
 
 		// everything seems fine; initialize puzzle object
-		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "flat"}, new_session_object.motive, puzzlepiece);
+		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "regular"}, new_session_object.motif, puzzlepiece);
+		new_session_object.puzzle.make_puzzlepiece_tiling(thisrng);
+
 		// set total number of connections
 		new_session_object.currentconnections = 0;
 		new_session_object.totalconnections = new_session_object.puzzle.totaledges;
 
 		// distribute tiles over game div; for now only fixed setting..
+	//	new_session_object.puzzle.distribute_pieces('completed', thisrng);
 		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
 
 
@@ -643,7 +646,7 @@ function getfullsessionobject(someSessionID) {
 	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
 	somepuzzle["seed"] = sessions[someSessionID].puzzle.seed;
 	somepuzzle["style"] = sessions[someSessionID].puzzle.style;
-	somepuzzle["motive"] = sessions[someSessionID].puzzle.motive;
+	somepuzzle["motif"] = sessions[someSessionID].puzzle.motif;
 	var pieces = [];
 	for (var i = 0; i < somepuzzle.layout[0]; i++) {
 		pieces[i] = [];
@@ -655,6 +658,9 @@ function getfullsessionobject(someSessionID) {
 			pieces[i][j]["y0"] = sessions[someSessionID].puzzle.pieces[i][j].y0;
 			pieces[i][j]["z"] = sessions[someSessionID].puzzle.pieces[i][j].z;
 			pieces[i][j]["angle"] = sessions[someSessionID].puzzle.pieces[i][j].angle;
+			pieces[i][j]["w"] = sessions[someSessionID].puzzle.pieces[i][j].w;
+			pieces[i][j]["h"] = sessions[someSessionID].puzzle.pieces[i][j].h;
+			pieces[i][j]["edges"] = sessions[someSessionID].puzzle.pieces[i][j].edges;
 			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
 		// this is done client-side via puzzle seed
 		//	pieces[i][j]["w"] = sessions[someSessionID].puzzle.pieces[i][j].w;
