@@ -123,12 +123,14 @@ welcome.on('connection', function (socket) {
     	console.log("user", thisClient.clientID, " left");
 			if (thisClient.currentgameid !== "") {
 				if (sessions[thisClient.currentgameid]) {
+					sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
 					sessions[thisClient.currentgameid].currentplayers--;
 					// also revert claim on player-held tiles if any
 					if (typeof(thisClient) !== 'undefined') {
 						if (typeof(thisClient.holdsPiece) !== 'undefined') {
 							clearTimeout(thisClient.heldPieceTimeout);
 							claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
+							dragPiecesToTop(sessions[thisClient.currentgameid], thisClient.holdsPiece.partition);
 						}
 					}
 					console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
@@ -437,9 +439,10 @@ welcome.on('connection', function (socket) {
 								// claim this piece as held
 								sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
 								thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
-								thisClient.holdsPiece.z = sessions[thisClient.currentgameid].puzzle.maximumz++;
 								// apply claim to all pieces in same partition
 								claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+								dragPiecesToTop(sessions[thisClient.currentgameid], sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+
 								// inform clients to highlight tile accordingly
 								for (const client of sessions[thisClient.currentgameid].players) {
 									if (typeof(clients[client]) !== 'undefined') {
@@ -489,9 +492,8 @@ welcome.on('connection', function (socket) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+
 					// release claim
-					// note: also revert claim on other tiles from same partition
-					// claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j],partition);
 					clearTimeout(thisClient.heldPieceTimeout);
 					socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 					var thisPiece = thisClient.holdsPiece;
@@ -499,19 +501,23 @@ welcome.on('connection', function (socket) {
 					thisClient.holdsPiece = undefined;
 					// also revert claim on other tiles from same partition
 					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisPiece.partition);
+					dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 
 					// check for new connection with direct neighbors
 					if (sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece)) {
+						// adjust z-Index
+						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 						// send updated info to other players in this session
+						var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
 						for (const client of sessions[thisClient.currentgameid].players) {
 							if (typeof(clients[client]) !== 'undefined') {
+								// update piece coordinates
 								for (const piece of thisPiece.partition.pieces) {
 									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 								}
 
 								// also submit new partition info
-								var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
 								welcome.to(clients[client].socketID).emit('updatePuzzlePartitions', currentpartitions);
 
 								// also submit new progress
@@ -614,14 +620,20 @@ server.listen(port, function(){
 
 // function to format puzzle partitioning in a form that can be send to clients
 function getClientSidePartitionObject(somepuzzle) {
-	// result is an array of partitions, which themselves are arrays of pieces
-	var result = [];
+	// result is an object that contains an array of partitions, which themselves are arrays of pieces, and an array of pieces which only have information on changed connections
+	var result = {"partitions": [], "pieces": []};
 	for (const partition in somepuzzle.partitions) {
 		var thispartition = [];
 		for (const piece of somepuzzle.partitions[partition].pieces) {
 			thispartition.push([piece.i, piece.j]);
 		}
-		result.push(thispartition);
+		result.partitions.push(thispartition);
+	}
+	for (var i = 0; i < somepuzzle.layout[0]; i++) {
+		result.pieces[i] = [];
+		for (var j = 0; j < somepuzzle.layout[1]; j++) {
+			result.pieces[i][j] = {"connections": somepuzzle.pieces[i][j].connections};
+		}
 	}
 	return result;
 }
@@ -630,7 +642,14 @@ function getClientSidePartitionObject(somepuzzle) {
 function claimAllPiecesWithinPartition(someSession, someClient, somePartition) {
 	for (const piece of somePartition.pieces) {
 		piece.heldby = someClient;
-		piece.z = someSession.puzzle.maximumz++;
+	}
+}
+
+// make new common z-Index at the top for all pieces in this partition
+function dragPiecesToTop(someSession, somePartition) {
+	var newz = someSession.puzzle.maximumz++
+	for (const piece of somePartition.pieces) {
+		piece.z = newz;
 	}
 }
 
