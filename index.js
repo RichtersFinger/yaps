@@ -1,4 +1,4 @@
-const version = "0.8";
+const version = "0.8.1";
 
 
 // load and setup prerequisites
@@ -633,6 +633,38 @@ welcome.on('connection', function (socket) {
 			}
 		}
 		socket.emit('youCanLeave');
+	});
+	// handle client request to cancel download+not enter game session (same as iWantToLeaveMySession but without emit('youCanLeave'))
+	socket.on('iWantToCancelJoin', function() {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				// drop currently held piece (if any)
+				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+					clearTimeout(thisClient.heldPieceTimeout);
+					// revert claim on other tiles from same partition
+					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
+					// remove highlight of held piece
+					for (const client of sessions[thisClient.currentgameid].players) {
+						if (typeof(clients[client]) !== 'undefined') {
+						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+						}
+					}
+					thisClient.holdsPiece = undefined;
+				}
+
+				// remove client from player list
+				sessions[thisClient.currentgameid].currentplayers--;
+				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
+				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
+				thisClient.currentgameid = "";
+			}
+		}
 	});
 });
 
