@@ -1,4 +1,4 @@
-const version = "0.5";
+const version = "0.8";
 
 
 // load and setup prerequisites
@@ -238,6 +238,10 @@ welcome.on('connection', function (socket) {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
 			return;
 		}
+		if (thisClient.name === "") {
+			socket.emit('alert', 'Please enter a name first.');
+			return;
+		}
 
 		var new_session_object = {};
 		// make internal session id with up to 5 retries.. (this setup should prevent the creation of many "identical" sessions)
@@ -371,6 +375,10 @@ welcome.on('connection', function (socket) {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
 			return;
 		}
+		if (thisClient.name === "") {
+			socket.emit('alert', 'Please enter a name first.');
+			return;
+		}
 		// note: check and handle player still being registered in different game..
 		if (thisClient.currentgameid !== "") {
 			// ...
@@ -446,7 +454,11 @@ welcome.on('connection', function (socket) {
 								// inform clients to highlight tile accordingly
 								for (const client of sessions[thisClient.currentgameid].players) {
 									if (typeof(clients[client]) !== 'undefined') {
-										welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+										//welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+										for (const piece of thisClient.holdsPiece.partition.pieces) {
+											welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+																																piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+										}
 									}
 								}
 
@@ -464,7 +476,7 @@ welcome.on('connection', function (socket) {
 												}
 											}
 											// remove highlight of held piece
-											welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+										//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 										}
 										thisClient.holdsPiece.heldby = undefined;
 										thisClient.holdsPiece = undefined;
@@ -503,8 +515,19 @@ welcome.on('connection', function (socket) {
 					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisPiece.partition);
 					dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 
-					// check for new connection with direct neighbors
-					if (sessions[thisClient.currentgameid].puzzle.checkNewConnections(thisPiece)) {
+					// check for new connection between pieces of this partition and others
+					// to do this, first update current tile positions in held partition
+					for (const piece of thisPiece.partition.pieces) {
+						piece.x = thisPiece.x + (piece.x0 - thisPiece.x0);
+						piece.y = thisPiece.y + (piece.y0 - thisPiece.y0);
+					}
+					var partitionshavechanged = false;
+					for (const piece of thisPiece.partition.pieces) {
+						partitionshavechanged = partitionshavechanged || sessions[thisClient.currentgameid].puzzle.checkNewConnections(piece);
+					}
+
+					// notify everyone about changes (if necessary)
+					if (partitionshavechanged) {
 						// adjust z-Index
 						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 						// send updated info to other players in this session
@@ -542,7 +565,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-							welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
+						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
 						}
 					}
 				}
@@ -596,7 +619,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-							welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 						}
 					}
 					thisClient.holdsPiece = undefined;
