@@ -1,4 +1,4 @@
-const version = "0.8.1";
+const version = "0.8.2";
 
 
 // load and setup prerequisites
@@ -240,6 +240,7 @@ welcome.on('connection', function (socket) {
 		}
 		if (thisClient.name === "") {
 			socket.emit('alert', 'Please enter a name first.');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 
@@ -373,10 +374,12 @@ welcome.on('connection', function (socket) {
 		// deny if not registered yet
 		if (typeof(thisClient) === 'undefined') {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 		if (thisClient.name === "") {
 			socket.emit('alert', 'Please enter a name first.');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 		// note: check and handle player still being registered in different game..
@@ -397,9 +400,11 @@ welcome.on('connection', function (socket) {
 					// note: send more info (partitions, ??) | implement that as client signaling that they want an update
 				} else {
 					socket.emit('alert', "This session is full.");
+					socket.emit('releaseBlockedInterface');
 				}
 			} else {
 				socket.emit('alert', "This session does not exist (anymore).");
+				socket.emit('releaseBlockedInterface');
 			}
 		}
 	});
@@ -408,6 +413,7 @@ welcome.on('connection', function (socket) {
 		// deny if not registered yet
 		if (typeof(thisClient) === 'undefined') {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 
@@ -429,7 +435,7 @@ welcome.on('connection', function (socket) {
 	socket.on('iWantToPickUpPiece', function(i, j) {
 		// is user logged in?
 		if (typeof(thisClient) === 'undefined') {
-			socket.emit('alert', 'Not logged in. Try reconnecting by refreshing page.');
+			socket.emit('alert', 'Not logged in. Try reconnecting after refreshing page.');
 			return;
 		}
 		// does the game exist?
@@ -462,9 +468,14 @@ welcome.on('connection', function (socket) {
 									}
 								}
 
+
 								// timeout so that tile is dropped eventually automatically
 								let clientwasholdingthis = thisClient.holdsPiece;
 								thisClient.heldPieceTimeout = setTimeout(function() {
+									if (typeof(thisClient) === 'undefined') return;
+									if (typeof(thisClient.holdsPiece) === 'undefined') return;
+									if (typeof(clientwasholdingthis) === 'undefined') return;
+									if (typeof(sessions[thisClient.currentgameid]) === 'undefined') return;
 									if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 										socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 
@@ -521,13 +532,14 @@ welcome.on('connection', function (socket) {
 						piece.x = thisPiece.x + (piece.x0 - thisPiece.x0);
 						piece.y = thisPiece.y + (piece.y0 - thisPiece.y0);
 					}
-					var partitionshavechanged = false;
+					// partitionshavechanged counts the number of new connections
+					var partitionshavechanged = 0;
 					for (const piece of thisPiece.partition.pieces) {
-						partitionshavechanged = partitionshavechanged || sessions[thisClient.currentgameid].puzzle.checkNewConnections(piece);
+						partitionshavechanged += sessions[thisClient.currentgameid].puzzle.checkNewConnections(piece);
 					}
 
 					// notify everyone about changes (if necessary)
-					if (partitionshavechanged) {
+					if (partitionshavechanged > 0) {
 						// adjust z-Index
 						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 						// send updated info to other players in this session
@@ -546,6 +558,9 @@ welcome.on('connection', function (socket) {
 								// also submit new progress
 								sessions[thisClient.currentgameid].currentconnections = sessions[thisClient.currentgameid].puzzle.connectededges;
 								welcome.to(clients[client].socketID).emit('updatePuzzleProgress', sessions[thisClient.currentgameid].currentconnections);
+
+								// play sfx for all clients
+								welcome.to(clients[client].socketID).emit('playSFX_combine', partitionshavechanged);
 							}
 						}
 					} else {
