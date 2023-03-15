@@ -1,4 +1,4 @@
-const version = "0.9.1";
+const version = "0.9.2";
 
 
 // load and setup prerequisites
@@ -474,14 +474,13 @@ welcome.on('connection', function (socket) {
 								// inform clients to highlight tile accordingly
 								for (const client of sessions[thisClient.currentgameid].players) {
 									if (typeof(clients[client]) !== 'undefined') {
-										//welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
 										for (const piece of thisClient.holdsPiece.partition.pieces) {
 											welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
 																																piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 										}
 									}
 								}
-
 
 								// timeout so that tile is dropped eventually automatically
 								let clientwasholdingthis = thisClient.holdsPiece;
@@ -501,7 +500,7 @@ welcome.on('connection', function (socket) {
 												}
 											}
 											// remove highlight of held piece
-										//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+											if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 										}
 										thisClient.holdsPiece.heldby = undefined;
 										thisClient.holdsPiece = undefined;
@@ -594,7 +593,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
+							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
 						}
 					}
 				}
@@ -648,7 +647,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 						}
 					}
 					thisClient.holdsPiece = undefined;
@@ -656,7 +655,7 @@ welcome.on('connection', function (socket) {
 
 				// remove client from player list
 				sessions[thisClient.currentgameid].currentplayers--;
-				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
+				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
 				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
 				thisClient.currentgameid = "";
 			}
@@ -681,7 +680,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-						//	welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 						}
 					}
 					thisClient.holdsPiece = undefined;
