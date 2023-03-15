@@ -1,4 +1,4 @@
-const version = "0.9";
+const version = "0.9.1";
 
 
 // load and setup prerequisites
@@ -370,7 +370,7 @@ welcome.on('connection', function (socket) {
 		console.log('> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
 	});
 	// handle client request to enter specific session
-	socket.on('iWantToEnterSession', function(some_session_id) {
+	socket.on('iWantToEnterSession', function(some_session_id, some_passphrase) {
 		// deny if not registered yet
 		if (typeof(thisClient) === 'undefined') {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
@@ -391,6 +391,20 @@ welcome.on('connection', function (socket) {
 			if (typeof(sessions[some_session_id]) !== 'undefined') {
 				// is session full?
 				if (sessions[some_session_id].currentplayers < sessions[some_session_id].maxplayers) {
+					// is passphrase necessary + correct
+					if (sessions[some_session_id].bpassphrase) {
+						if (typeof(some_passphrase) === 'undefined') {
+							socket.emit('alert', 'No passphrase provided.');
+							socket.emit('releaseBlockedInterface');
+							return;
+						} else {
+							if (some_passphrase !== sessions[some_session_id].passphrase) {
+								socket.emit('alert', 'Wrong passphrase.');
+								socket.emit('releaseBlockedInterface');
+								return;
+							}
+						}
+					}
 					// send info to client
 					sessions[some_session_id].currentplayers++;
 					thisClient.currentgameid = sessions[some_session_id].id;
