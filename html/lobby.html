@@ -5,7 +5,7 @@
 <script src="/socket.io/socket.io.js"></script>
 
 
- <!-- <link rel="icon" href="img/_server_/logo.ico" type="image/x-icon">-->
+	<link rel="icon" href="img/icons/favicon.ico" type="image/x-icon">
 
 	<style>
 		body{ background-color: #555; overflow: hidden; display: block; font-family: '';font-size: 18px;}
@@ -41,6 +41,16 @@
 			background-color: #555555;
 			border: none;
 			padding: calc(3vmin) calc(3vmin);
+			text-align: center;
+			text-decoration: none;
+			display: inline-block;
+		}
+
+		/*difficulty selection button*/
+		.difficultybutton {
+			background-color: #555555;
+			border: none;
+			padding: calc(1.5vmin) calc(1.5vmin);
 			text-align: center;
 			text-decoration: none;
 			display: inline-block;
@@ -310,7 +320,7 @@
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">Setup your Profile</h1>
 				<div id="div_lobby_content_profile_settings" style="padding-left: 2%; width: 100%; height: min(calc(60vw), calc(60vh)); overflow-y: auto; overflow-x: hidden;" class="fancyscrollbar">
 					<h2 style="margin-top: 2%; margin-bottom: 1%; color: #ffffff; font-size: calc(4vmin)">Name</h2>
-	  			<input type="text" id="div_lobby_content_profile_settings_nameinput" placeholder="player name" name="div_lobby_content_profile_settings_nameinput" style="color: #ffffff; font-size: calc(4vmin); margin-left: 2.5%; width: 90%; background: rgba(50,50,50,0.5)">
+	  			<input type="text" value="" id="div_lobby_content_profile_settings_nameinput" placeholder="player name" name="div_lobby_content_profile_settings_nameinput" style="color: #ffffff; font-size: calc(4vmin); margin-left: 2.5%; width: 90%; background: rgba(50,50,50,0.5)">
 					<h2 style="color: #ffffff; margin-bottom: calc(1vmin); font-size: calc(4vmin)">Color</h2>
 					<div id="div_lobby_content_profile_settings_color" style="padding-left: 2%; width: 90%;">
 						<!--
@@ -335,9 +345,9 @@
 					<button id="div_lobby_content_newgame_back" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/backicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
 					<button id="div_lobby_content_newgame_play" class="fancybutton" style="position: absolute; left: calc(37vmin); margin: calc(0.2vmin); display: grid; align-items: center; opacity: 0.5"><img src="img/icons/playicon.png" width="90%" style="position: relative; left: 10%" draggable="false"></button>
 				</div>
-				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: calc(44vw); height: min(calc(55vw), calc(55vh)); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden" class="fancyscrollbar">
+				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: min(calc(44vw),calc(50vh)); height: min(calc(55vw), calc(55vh)); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden" class="fancyscrollbar">
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(0.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Session Name</h2>
-	  			<input value = "test" type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
+	  			<input value = "New Session" type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
 
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(7.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Passphrase</h2>
 					<div id="div_lobby_content_newgame_settings_passphrase_check_container" style="position: absolute; left: calc(0.15vw); top: calc(10.2vmin); transform: scale(0.7)">
@@ -362,12 +372,19 @@
 						<button id="div_lobby_content_newgame_settings_maxplayers_up" class="plus"></button>
 					</div>
 
-					<h2 style="position: absolute; left: calc(0.5vw); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Motif</h2>
-					<div style="position: absolute; left: calc(0.5vw); top: calc(24.2vmin); width: min(calc(30vw), calc(30vmin))">
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Difficulty</h2>
+					<div id="div_lobby_content_newgame_settings_difficulty" style="position: absolute; left: min(calc(0.5vw), calc(0.5vmin)); top: calc(23.75vmin); width: min(calc(35vw), calc(40vh));">
+						<!--
+						<button class="colorbutton" style="margin: calc(0.5vmin)"> </button>
+						-->
+					</div>
+
+					<h2 style="position: absolute; left: calc(0.5vw); top: calc(28.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Motif</h2>
+					<div style="position: absolute; left: calc(0.5vw); top: calc(31.2vmin); width: min(calc(26vw), calc(26vmin))">
 						<input type="file" id="div_lobby_content_newgame_settings_motiffile" accept="image/jpeg, image/png, image/jpg" style="margin-bottom: calc(1.5vmin)">
 						<img src="img/icons/motif_placeholder.png" id="div_lobby_content_newgame_settings_motif_preview" width=100% draggable="false" style="margin-left: calc(0.5vw); outline: calc(0.5vmin) solid #ffffff">
 					</div>
-					<div id="div_lobby_content_newgame_settings_motiffile_loadericon" style="position: absolute; left: min(calc(12.5vw), calc(12.5vmin)); top: calc(32vmin); padding: calc(1.0vmin); padding-bottom: calc(0.45vmin); border-radius: 10px; background: rgba(50,50,50,0.5); display: none">
+					<div id="div_lobby_content_newgame_settings_motiffile_loadericon" style="position: absolute; left: min(calc(12.5vw), calc(12.5vmin)); top: calc(39vmin); padding: calc(1.0vmin); padding-bottom: calc(0.45vmin); border-radius: 10px; background: rgba(50,50,50,0.5); display: none">
 						<span style="width: min(calc(4vw), calc(4vmin)); height: min(calc(4vw), calc(4vmin))" class="loader"></span>
 					</div>
 				</div>

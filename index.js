@@ -1,4 +1,4 @@
-const version = "0.9.3";
+const version = "0.9.4";
 
 
 // load and setup prerequisites
@@ -44,7 +44,7 @@ app.use("/lib", express.static('lib'));
 app.use("/sfx", express.static('sfx'));
 app.use("/tmp", express.static('tmp')); // tmp-directory contains the individual session's puzzle motifs
 
-//app.use('/favicon.ico', express.static('img/_server_/logo.ico'));
+app.use('/favicon.ico', express.static('img/icons/favicon.ico'));
 
 // load additional modules
 const rng = require('./lib/rng.js');
@@ -191,6 +191,7 @@ welcome.on('connection', function (socket) {
 			                            "maxplayers": sessions[session].maxplayers,
 			                            "currentconnections": sessions[session].currentconnections,
 			                            "totalconnections": sessions[session].totalconnections,
+			                            "difficulty": sessions[session].difficulty,
 			                            "bpassphrase": sessions[session].bpassphrase};
 		}
 		socket.emit('currentListOfSessions', reducedListOfSessions);
@@ -200,6 +201,7 @@ welcome.on('connection', function (socket) {
 	const nMaximumPiecesPerDirection = 50, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;
 	const nMaximumRetriesFindingID = 5;
 	const nMaximumPlayers = 20;
+	const nDifficultySettings = 4;
 	socket.on('iWantToStartNewSession', function(some_session_object) {
 		// check existence and types of entries in some_session_object
 		var validinputtypes = true;
@@ -211,6 +213,7 @@ welcome.on('connection', function (socket) {
 				  || !("passphrase" in some_session_object)
 				  || !("piecesperlength" in some_session_object)
 				  || !("maxplayers" in some_session_object)
+				  || !("difficulty" in some_session_object)
 				  || !("motif" in some_session_object)
 				  || !("motif_res" in some_session_object)) {
 				validinputtypes = false;
@@ -220,6 +223,7 @@ welcome.on('connection', function (socket) {
 				    || typeof(some_session_object.passphrase) !== 'string'
 				    || typeof(some_session_object.piecesperlength) !== 'number'
 				    || typeof(some_session_object.maxplayers) !== 'number'
+				    || typeof(some_session_object.difficulty) !== 'number'
 				    || typeof(some_session_object.motif) !== 'string'
 				    || typeof(some_session_object.motif_res) !== 'object') {
 					validinputtypes = false;
@@ -261,12 +265,15 @@ welcome.on('connection', function (socket) {
 		}
 		console.log('new session with ID ' + sessionid + ' requested by ' + thisClient.clientID);
 		// test if all input is valid and insert into server-side object
+		// check on validity of session name & passphrase
 		new_session_object.name = some_session_object.name.replace(/<|>|&|;|#/g, "");
 		if (new_session_object.name.length > nMaximumCharactersSession) {
 			new_session_object.name = new_session_object.name.substr(0, nMaximumCharactersSession);
 		}
 		new_session_object.bpassphrase = some_session_object.bpassphrase;
 		new_session_object.passphrase = some_session_object.passphrase;
+
+		// check on validity of puzzle resolution input
 		if (Number.isInteger(some_session_object.piecesperlength)) {
 			if (some_session_object.piecesperlength >= nMinimumPiecesLongDirection && some_session_object.piecesperlength <= nMaximumPiecesPerDirection) {
 				new_session_object.piecesperlength = some_session_object.piecesperlength;
@@ -279,6 +286,7 @@ welcome.on('connection', function (socket) {
 			return;
 		}
 
+		// check on validity of maxplayer input
 		var maxplayers = 1;
 		if (Number.isInteger(some_session_object.maxplayers)) {
 			if (some_session_object.maxplayers >= 1 && some_session_object.maxplayers <= nMaximumPlayers) {
@@ -291,6 +299,23 @@ welcome.on('connection', function (socket) {
 		}
 		new_session_object.currentplayers = 0;
 		new_session_object.maxplayers = maxplayers;
+
+		// check on validity of difficulty input
+		var difficulty = 0;
+		if (Number.isInteger(some_session_object.difficulty)) {
+			if (some_session_object.difficulty >= 0 && some_session_object.difficulty < nDifficultySettings) {
+				difficulty = some_session_object.difficulty;
+			} else {
+				difficulty = 0;
+			}
+		} else {
+			difficulty = 0;
+		}
+		new_session_object.difficulty = difficulty;
+		var style = {"edges": "regular"};
+		if (new_session_object.difficulty === 3) {
+			style.edges = "flat_irregular";
+		}
 
 		// check if valid motif data; write to file
 		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
@@ -344,8 +369,8 @@ welcome.on('connection', function (socket) {
 
 
 		// everything seems fine; initialize puzzle object
-		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), {"edges": "regular"}, new_session_object.motif, puzzlepiece);
-		new_session_object.puzzle.make_puzzlepiece_tiling(thisrng);
+		new_session_object.puzzle = new puzzle(sessionid, new_session_object.layout, new_session_object.puzzledimensions, Math.floor(10000 * thisrng.get()), style, new_session_object.motif, puzzlepiece);
+		new_session_object.puzzle.make_puzzlepiece_tiling(new_session_object.difficulty, thisrng);
 
 		// set total number of connections
 		new_session_object.currentconnections = 0;
@@ -354,7 +379,6 @@ welcome.on('connection', function (socket) {
 		// distribute tiles over game div; for now only fixed setting..
 	//	new_session_object.puzzle.distribute_pieces('completed', thisrng);
 		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
-
 
 		// add some more info to session object
 		new_session_object.id = sessionid;
