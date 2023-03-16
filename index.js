@@ -579,6 +579,7 @@ welcome.on('connection', function (socket) {
 					if (partitionshavechanged > 0) {
 						// adjust z-Index
 						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
+
 						// send updated info to other players in this session
 						var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
 						for (const client of sessions[thisClient.currentgameid].players) {
@@ -587,6 +588,15 @@ welcome.on('connection', function (socket) {
 								for (const piece of thisPiece.partition.pieces) {
 									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+								}
+
+								// give player-held pieces priority by raising above that merged partition (since those are still held by players)
+								if (typeof(clients[client].holdsPiece) !== 'undefined') {
+									dragPiecesToTop(sessions[thisClient.currentgameid], clients[client].holdsPiece.partition);
+									for (const piece of clients[client].holdsPiece.partition.pieces) {
+										welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+										                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+									}
 								}
 
 								// also submit new partition info
