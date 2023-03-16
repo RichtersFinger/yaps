@@ -9,21 +9,10 @@
 
 	<style>
 		body{ background-color: #555; overflow: hidden; display: block; font-family: '';font-size: 18px;}
-		.loader {
-			border: 8px solid #f3f3f3;
-			border-radius: 50%;
-			border-top: 8px solid #3498db;
-			border-bottom: 8px solid #3498db;
-			width: 120px;
-			height: 120px;
-			-webkit-animation: spin 2s linear infinite; /* Safari */
-			animation: spin 2s linear infinite;
-		}
-
+		/* pulsing (splash) */
 		.pulseelement {
 			animation: pulse 2s infinite;
 		}
-
 		@keyframes pulse {
 			0%{
 				transform: scale(1.0);
@@ -36,6 +25,7 @@
 			}
 		}
 
+		/* https://stackoverflow.com/questions/826782/how-to-disable-text-selection-highlighting */
 		.noselect {
 			-webkit-touch-callout: none; /* iOS Safari */
 			-webkit-user-select: none; /* Safari */
@@ -46,6 +36,7 @@
 			supported by Chrome, Opera and Firefox */
 		}
 
+		/*color selection button*/
 		.colorbutton {
 			background-color: #555555;
 			border: none;
@@ -55,6 +46,7 @@
 			display: inline-block;
 		}
 
+		/*fancy icon button*/
 		.fancybutton {
 			background-color: rgba(50,50,50,0.4);
 			border: none;
@@ -66,7 +58,7 @@
 			outline: 2px solid #ffffff;
 		}
 
-
+		/* table style for list of sessions */
 		.sessionlist {
 		}
 		.sessionlist tr:nth-child(odd){
@@ -90,6 +82,7 @@
 		  color: white;
 		}
 
+		/* custom checkbox */
 		.toggle_checkbox {
 			position: relative;
 			display: inline-block;
@@ -131,6 +124,119 @@
 			-webkit-transform: translateX(min(calc(2vmin), calc(2vw)));
 			-ms-transform: translateX(min(calc(2vmin), calc(2vw)));
 			transform: translateX(min(calc(2vmin), calc(2vw)));
+		}
+
+		/* custom scrollbar */
+		.fancyscrollbar::-webkit-scrollbar-track {
+			border-radius: 10px;
+			-webkit-box-shadow: inset 0 0 6px rgba(50,50,50,0.3);
+			background-color: rgba(200,200,200,0.25);
+		}
+		.fancyscrollbar::-webkit-scrollbar {
+			border-radius: 10px;
+			width: min(calc(2vw), 10px);
+		}
+		.fancyscrollbar::-webkit-scrollbar-thumb {
+			border-radius: 10px;
+			-webkit-box-shadow: inset 0 0 6px rgba(50,50,50,.3);
+			background-color: rgba(50,50,50,0.75);
+		}
+
+		/* file select */
+		input[type=file] {
+			color: #ffffff;
+			font-size: calc(1.8vmin);
+		}
+		input[type=file]::file-selector-button {
+			background-color: rgba(50,50,50,0.4);
+			border: none;
+			color: #ffffff;
+			font-size: calc(1.8vmin);
+			width: calc(12vmin);
+			height: calc(4vmin);
+			margin: 2px;
+			padding: calc(1vmin) calc(1vmin);
+			border-radius: calc(1vmin);
+		}
+		input[type=file]::file-selector-button:hover {
+			outline: 2px solid #ffffff;
+		}
+
+		/* number select */
+		/* based on https://stackoverflow.com/questions/63544101/customize-increment-arrows-on-input-of-type-number-using-css */
+		input[type="number"] {
+			-webkit-appearance: textfield;
+			-moz-appearance: textfield;
+			appearance: textfield;
+		}
+
+		input[type=number]::-webkit-inner-spin-button,
+		input[type=number]::-webkit-outer-spin-button {
+			-webkit-appearance: none;
+		}
+
+		.number-input {
+			border: none;
+			display: inline-flex;
+		}
+
+		.number-input button {
+			outline:none;
+			-webkit-appearance: none;
+			background-color: rgba(50,50,50,0.5);
+			border: none;
+			align-items: center;
+			justify-content: center;
+			width: calc(3vmin);
+			height: calc(3vmin);
+			margin: 0;
+			position: relative;
+			padding:0;
+			border-radius: 50%;
+			transform: scale(0.75);
+		}
+		.number-input button:hover {
+			outline: 2px solid #ffffff;
+		}
+		.number-input button.minus:before {
+			display: inline-block;
+			position: absolute;
+			color: #ffffff;
+			content: '-';
+			font-size: calc(3vmin);
+			font-weight: 900;
+			top: calc(-0.4vmin);
+			left: calc(0vmin);
+			width: calc(3vmin);
+			height: calc(3vmin);
+		}
+		.number-input button.plus:before {
+			display: inline-block;
+			position: absolute;
+			color: #ffffff;
+			content: '+';
+			font-size: calc(3vmin);
+			font-weight: 900;
+			top: calc(-0.2vmin);
+			left: calc(0vmin);
+			width: calc(3vmin);
+			height: calc(3vmin);
+		}
+		.number-input input[type=number] {
+			color: #ffffff;
+			font-size: calc(2.5vmin);
+			width: calc(5vmin);
+			height: calc(3vmin);
+			background-color: rgba(50,50,50,0.5);
+			border:none;
+			padding: 0;
+			border-radius: calc(1vmin);
+			margin: 0;
+			text-align: center;
+			outline:none;
+		}
+		.number-input input[type=number]:hover {
+			outline: 2px solid #ffffff;
 		}
 
 		/* https://cssloaders.github.io/ */
@@ -198,12 +304,11 @@
 		<button id="div_lobby_help" class="fancybutton" style="position:fixed; right: calc(0.5vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/helpicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
 		<div id="div_lobby_header" style="display: flex; justify-content: center; z-index: 6">
 			<img src="img/logo.png" style="width: calc(40vmin); position: relative; top: calc(3vmin); z-index: 6" class="noselect pulseelement" draggable="false">
-			<!--<h1 style="color: #cccccc; font-size: calc(10vmin) ; font-weight: 900; text-shadow: -0.0075em 0.0075em #111" class="pulseelement">LOGO</h1>-->
 		</div>
-		<div id="div_lobby_content" style="display: flex; justify-content: center; height: calc(75vh); z-index: 5">
-			<div id="div_lobby_content_profile" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-left: 2%; margin-right: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
+		<div id="div_lobby_content" style="display: flex; justify-content: center; height: min(75vw, calc(75vh)); z-index: 5">
+			<div id="div_lobby_content_profile" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-left: 2%; margin-right: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: min(calc(45vw), calc(50vh))">
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">Setup your Profile</h1>
-				<div id="div_lobby_content_profile_settings" style="padding-left: 2%; width: 100%; max-height: calc(70vh); overflow-y: auto; overflow-x: hidden;">
+				<div id="div_lobby_content_profile_settings" style="padding-left: 2%; width: 100%; height: min(calc(60vw), calc(60vh)); overflow-y: auto; overflow-x: hidden;" class="fancyscrollbar">
 					<h2 style="margin-top: 2%; margin-bottom: 1%; color: #ffffff; font-size: calc(4vmin)">Name</h2>
 	  			<input type="text" id="div_lobby_content_profile_settings_nameinput" placeholder="player name" name="div_lobby_content_profile_settings_nameinput" style="color: #ffffff; font-size: calc(4vmin); margin-left: 2.5%; width: 90%; background: rgba(50,50,50,0.5)">
 					<h2 style="color: #ffffff; margin-bottom: calc(1vmin); font-size: calc(4vmin)">Color</h2>
@@ -214,22 +319,23 @@
 					</div>
 				</div>
 			</div>
-			<div id="div_lobby_content_games" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%">
+			<div id="div_lobby_content_games" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: min(calc(45vw), calc(50vh)">
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">Listed Sessions</h1>
 				<div id="div_lobby_content_games_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
 					<button id="div_lobby_content_games_refreshlist" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/reloadicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 					<button id="div_lobby_content_games_newgame" class="fancybutton" style="position:absolute; left: calc(4.4vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/addicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
 				</div>
-				<div id="div_lobby_content_games_list" style="position: absolute; margin-top: calc(4vmin); overflow-y: auto">
+				<div id="div_lobby_content_games_list" style="position: absolute; margin-top: calc(4vmin); height: min(calc(55vw), calc(55vh)); overflow-y: auto" class="fancyscrollbar">
+					<h1 style="color: #ffffff; font-size: calc(50vmin)">Listed Sessions</h1>
 				</div>
 			</div>
-			<div id="div_lobby_content_newgame" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: 45%; display: none">
+			<div id="div_lobby_content_newgame" style="padding-left: 2%; padding-right: 2%; padding-bottom: 2%; margin-right: 2%; margin-left: 1%; border-radius: 10px; background: rgba(50,50,50,0.5); width: min(calc(45vw), calc(50vh)); display: none">
 				<h1 style="color: #ffffff; font-size: calc(5vmin)">New Session</h1>
 				<div id="div_lobby_content_newgame_controls" style="position:absolute; width: 100%; margin-top: calc(-2vmin)">
 					<button id="div_lobby_content_newgame_back" class="fancybutton" style="position:absolute; left: 0; margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/backicon.png" width="90%" style="position: relative; left: 5%" draggable="false"></button>
 					<button id="div_lobby_content_newgame_play" class="fancybutton" style="position: absolute; left: calc(37vmin); margin: calc(0.2vmin); display: grid; align-items: center; opacity: 0.5"><img src="img/icons/playicon.png" width="90%" style="position: relative; left: 10%" draggable="false"></button>
 				</div>
-				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: calc(44vw); height: calc(55vh); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden">
+				<div id="div_lobby_content_newgame_settings" style="position: absolute; width: calc(44vw); height: min(calc(55vw), calc(55vh)); margin-top: calc(4vmin); overflow-y: auto; overflow-x: hidden" class="fancyscrollbar">
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(0.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Session Name</h2>
 	  			<input value = "test" type="text" id="div_lobby_content_newgame_settings_name" placeholder="session name" style="position: absolute; left: calc(0.5vw); top: calc(3.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(80%, 35.5vmin); background: rgba(50,50,50,0.5)">
 
@@ -243,10 +349,18 @@
 					<input type="text" id="div_lobby_content_newgame_settings_passphrase" placeholder="passphrase" style="position: absolute; left: min(calc(6.0vmin), calc(6.0vw)); top: calc(10.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(70%, 30vmin); background: rgba(50,50,50,0.5); opacity: 0.5" disable = true>
 
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(14.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Pieces in Long Edge</h2>
-					<input type="number" min="5" value="10" placeholder="10" id="div_lobby_content_newgame_settings_piecesperlength" style="position: absolute; left: calc(0.5vw); top: calc(17.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(15%, 12.0vmin); background: rgba(50,50,50,0.5)">
+					<div id="div_lobby_content_newgame_settings_piecesperlength_container" style="position: absolute; left: calc(0.5vw); top: calc(17.2vmin); " class="number-input">
+						<button id="div_lobby_content_newgame_settings_piecesperlength_down" class="minus"></button>
+						<input id="div_lobby_content_newgame_settings_piecesperlength" min="5" placeholder="10" value="10" type="number">
+						<button id="div_lobby_content_newgame_settings_piecesperlength_up" class="plus"></button>
+					</div>
 
 					<h2 style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(14.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Max. Players</h2>
-					<input type="number" min="1" value="10" placeholder="10" id="div_lobby_content_newgame_settings_maxplayers" style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(17.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(15%, 12.0vmin); background: rgba(50,50,50,0.5)">
+					<div id="div_lobby_content_newgame_settings_maxplayers_container" style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(17.2vmin); " class="number-input">
+						<button id="div_lobby_content_newgame_settings_maxplayers_down" class="minus"></button>
+						<input id="div_lobby_content_newgame_settings_maxplayers" min="1" placeholder="10" value="10" type="number">
+						<button id="div_lobby_content_newgame_settings_maxplayers_up" class="plus"></button>
+					</div>
 
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Motif</h2>
 					<div style="position: absolute; left: calc(0.5vw); top: calc(24.2vmin); width: min(calc(30vw), calc(30vmin))">
