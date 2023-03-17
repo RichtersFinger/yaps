@@ -391,7 +391,7 @@
 			</div>
 		</div>
 	</div>
-	<div id="div_game" style="background-image: url(img/back/wood_seamless.jpeg); background-position: left 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none" class="noselect"> <!--; background-repeat: no-repeat  -->
+	<div id="div_game" style="background-image: url(img/back/wood_seamless.jpeg); background-position: left 0px top 0px; background-size: 100%; position: fixed; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; display: none" class="noselect">
 		<div id="div_game_progress" style="position: fixed; z-index: 2147483640; right: calc(0.5vmin); top: calc(0.5vmin); margin: 0; padding: 0; border-radius: calc(1vmin); background: rgba(50,50,50,0.5)">
 			<p id="div_game_progress_label" style="font-family: Arial, sans-serif; color: #ffffff; font-size: calc(4vmin); margin: 0; padding-right: calc(1vmin); padding-left: calc(2vmin); padding-top: calc(1vmin); padding-bottom: calc(1vmin)"> </p>
 		</div>
@@ -404,6 +404,11 @@
 		<div id="div_game_preview" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483641; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
 			<img id="div_game_preview_image" draggable="false" style="position: absolute; outline: calc(0.5vmin) solid #ffffff">
 		</div>
+		<!-- indicators for where the game board ends -->
+		<div id="div_game_boundaryoverlay_left" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; backdrop-filter: blur(10px); background-color: rgba(50,50,50,0.75)" class="noselect">
+		</div><div id="div_game_boundaryoverlay_right" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; backdrop-filter: blur(10px); background-color: rgba(50,50,50,0.75)" class="noselect">
+		</div><div id="div_game_boundaryoverlay_top" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; backdrop-filter: blur(10px); background-color: rgba(50,50,50,0.75)" class="noselect">
+		</div><div id="div_game_boundaryoverlay_bottom" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; backdrop-filter: blur(10px); background-color: rgba(50,50,50,0.75)" class="noselect"></div>
 	</div>
 
 	<script src="lib/game.js"></script>

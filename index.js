@@ -1,5 +1,4 @@
-const version = "0.9.6";
-
+const version = "0.9.7";
 
 // load and setup prerequisites
 var express = require('express');
@@ -236,10 +235,12 @@ welcome.on('connection', function (socket) {
 		}
 		if (!validinputtypes) {
 			socket.emit('alert', 'bad input');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 		if (typeof(thisClient) === 'undefined') {
 			socket.emit('alert', 'not logged in yet, try refreshing page');
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 		if (thisClient.name === "") {
@@ -261,6 +262,7 @@ welcome.on('connection', function (socket) {
 		}
 		if (!foundValidID) {
 			socket.emit('alert', "something went wrong during session creation; maybe game already exists?");
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 		console.log('new session with ID ' + sessionid + ' requested by ' + thisClient.clientID);
@@ -279,10 +281,12 @@ welcome.on('connection', function (socket) {
 				new_session_object.piecesperlength = some_session_object.piecesperlength;
 			} else {
 				socket.emit('alert', "Number of pieces in long edge out of range.");
+				socket.emit('releaseBlockedInterface');
 				return;
 			}
 		} else {
 			socket.emit('alert', "Invalid setting for number of pieces in long edge.");
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 
@@ -340,9 +344,15 @@ welcome.on('connection', function (socket) {
 						new_session_object.layout[1] = Math.floor(0.5 + some_session_object.motif_res[1]/some_session_object.motif_res[0]*new_session_object.piecesperlength);
 						new_session_object.puzzledimensions = [1.0, some_session_object.motif_res[1]/some_session_object.motif_res[0]];
 					}
+					const game_boundary_baserange = 2.0;
+		      new_session_object.game_boundary_left = 0.5 - new_session_object.puzzledimensions[0] * game_boundary_baserange;
+		      new_session_object.game_boundary_right = 0.5 + new_session_object.puzzledimensions[0] * game_boundary_baserange;
+		      new_session_object.game_boundary_top = 0.5 - new_session_object.puzzledimensions[1] * game_boundary_baserange;
+		      new_session_object.game_boundary_bottom = 0.5 + new_session_object.puzzledimensions[1] * game_boundary_baserange;
 					// check whether resulting puzzle resolution is fine
 					if (Math.min(new_session_object.layout[0], new_session_object.layout[1]) < nMinimumPiecesShortDirection) {
 							socket.emit('alert', "Requested puzzle resolution too small (" + new_session_object.layout[0] + ", " + new_session_object.layout[1] + ").");
+							socket.emit('releaseBlockedInterface');
 							return;
 					}
 
@@ -352,18 +362,22 @@ welcome.on('connection', function (socket) {
 						new_session_object.motif_res[1] = some_session_object.motif_res[1];
 					} else {
 						socket.emit('alert', "Image resolution insufficient for given layout.");
+						socket.emit('releaseBlockedInterface');
 						return;
 					}
 				} else {
 					socket.emit('alert', "Bad info on image resolution.");
+					socket.emit('releaseBlockedInterface');
 					return;
 				}
 			} else {
 				socket.emit('alert', "Error when reading image file.");
+				socket.emit('releaseBlockedInterface');
 				return;
 			}
 		} else {
 			socket.emit('alert', "The received data is no valid image file.");
+			socket.emit('releaseBlockedInterface');
 			return;
 		}
 
@@ -379,6 +393,12 @@ welcome.on('connection', function (socket) {
 		// distribute tiles over game div; for now only fixed setting..
 	//	new_session_object.puzzle.distribute_pieces('completed', thisrng);
 		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
+		// make sure nothing got placed badly
+		for (var i = 0; i < new_session_object.puzzle.layout[0]; i++) {
+			for (var j = 0; j < new_session_object.puzzle.layout[1]; j++) {
+				enforce_game_boundary(new_session_object, new_session_object.puzzle.pieces[i][j]);
+			}
+		}
 
 		// add some more info to session object
 		new_session_object.id = sessionid;
@@ -533,6 +553,8 @@ welcome.on('connection', function (socket) {
 									}
 								}, 20000);
 								socket.emit('startMovingPiece', i, j, thisClient.holdsPiece.z);
+							} else {
+								socket.emit('stopMovingPiece', sessions[thisClient.currentgameid].puzzle.pieces[i][j].x, sessions[thisClient.currentgameid].puzzle.pieces[i][j].y, sessions[thisClient.currentgameid].puzzle.pieces[i][j].z, sessions[thisClient.currentgameid].puzzle.pieces[i][j].angle);
 							}
 						}
 					}
@@ -577,6 +599,7 @@ welcome.on('connection', function (socket) {
 
 					// notify everyone about changes (if necessary)
 					if (partitionshavechanged > 0) {
+						enforce_game_boundary(sessions[thisClient.currentgameid], thisPiece);
 						// adjust z-Index
 						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
 
@@ -650,6 +673,7 @@ welcome.on('connection', function (socket) {
 					thisClient.holdsPiece.x = x;
 					thisClient.holdsPiece.y = y;
 					thisClient.holdsPiece.angle = angle;
+					enforce_game_boundary(sessions[thisClient.currentgameid], thisClient.holdsPiece);
 					// note: also update other tiles in the same partition
 					// send updated info to other players in this session
 					for (const client of sessions[thisClient.currentgameid].players) {
@@ -767,6 +791,54 @@ function dragPiecesToTop(someSession, somePartition) {
 	var newz = someSession.puzzle.maximumz++
 	for (const piece of somePartition.pieces) {
 		piece.z = newz;
+	}
+}
+
+
+function enforce_game_boundary(someSession, somePiece) {
+	// find boundary of partition
+	var leftmost = somePiece;
+	var rightmost = somePiece;
+	var topmost = somePiece;
+	var bottommost = somePiece;
+	for (const piece of somePiece.partition.pieces) {
+		if (piece.x < leftmost.x) {
+			leftmost = piece;
+		}
+		if (piece.x + piece.w > rightmost.x + rightmost.w) {
+			rightmost = piece;
+		}
+		if (piece.y < topmost.y) {
+			topmost = piece;
+		}
+		if (piece.y + piece.h > bottommost.y + bottommost.h) {
+			bottommost = piece;
+		}
+	}
+	// check individual directions and shift partition accordingly..
+	if (leftmost.x < someSession.game_boundary_left) {
+		leftmost.x = someSession.game_boundary_left;
+		for (const piece of somePiece.partition.pieces) {
+			piece.x = leftmost.x + (piece.x0 - leftmost.x0);
+		}
+	}
+	if (rightmost.x + rightmost.w > someSession.game_boundary_right) {
+		rightmost.x = someSession.game_boundary_right - rightmost.w;
+		for (const piece of somePiece.partition.pieces) {
+			piece.x = rightmost.x + (piece.x0 - rightmost.x0);
+		}
+	}
+	if (topmost.y < someSession.game_boundary_top) {
+		topmost.y = someSession.game_boundary_top;
+		for (const piece of somePiece.partition.pieces) {
+			piece.y = topmost.y + (piece.y0 - topmost.y0);
+		}
+	}
+	if (bottommost.y + rightmost.h > someSession.game_boundary_bottom) {
+		bottommost.y = someSession.game_boundary_bottom - rightmost.h;
+		for (const piece of somePiece.partition.pieces) {
+			piece.y = bottommost.y + (piece.y0 - bottommost.y0);
+		}
 	}
 }
 
