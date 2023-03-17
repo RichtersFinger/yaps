@@ -1,4 +1,4 @@
-const version = "0.9.7";
+const version = "0.9.8";
 
 // load and setup prerequisites
 var express = require('express');
@@ -62,13 +62,15 @@ var sessions = {};
 const publicipAPI = 'api.ipify.org';
 const port = 8080;
 var serverip = 0;
-http.get({'host': publicipAPI, 'port': 80, 'path': '/'}, function(resp) {
+http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, function(resp) {
   resp.on('data', function(ip) {
     serverip = ip;
 		console.log("public adress " + serverip + ":" + port);
   });
 }).on('error', function(err) {
 	console.log("public IP address API unavailable.. maybe check url definition 'publicipAPI' in file 'index.js'");
+}).on('timeout', function(err) {
+	console.log("(public ip) " + publicipAPI + " takes unusually long to answer..");
 });
 
 var welcome = io.of('/welcome');
