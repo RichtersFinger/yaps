@@ -1,4 +1,4 @@
-const version = "0.9.8";
+const version = "0.9.9";
 
 // load and setup prerequisites
 var express = require('express');
@@ -92,7 +92,7 @@ welcome.on('connection', function (socket) {
 				} else {
 					// make association to existing entry
 					console.log(previousname + ": reconnecting existing client");
-					console.log("updating socketID from", clients[previousname].socketID, " to", userID);
+					console.log("updating socketID from", clients[previousname].socketID, "to", userID, "(" + clients[previousname].name + ")");
 					clients[previousname].socketID = userID;
 					thisClient = clients[previousname];
 					thisClient.login();
@@ -124,18 +124,20 @@ welcome.on('connection', function (socket) {
     	console.log("user", thisClient.clientID, " left");
 			if (thisClient.currentgameid !== "") {
 				if (sessions[thisClient.currentgameid]) {
-					sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
-					sessions[thisClient.currentgameid].currentplayers--;
-					// also revert claim on player-held tiles if any
-					if (typeof(thisClient) !== 'undefined') {
-						if (typeof(thisClient.holdsPiece) !== 'undefined') {
-							clearTimeout(thisClient.heldPieceTimeout);
-							claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
-							dragPiecesToTop(sessions[thisClient.currentgameid], thisClient.holdsPiece.partition);
+					if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+						sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
+						sessions[thisClient.currentgameid].currentplayers--;
+						// also revert claim on player-held tiles if any
+						if (typeof(thisClient) !== 'undefined') {
+							if (typeof(thisClient.holdsPiece) !== 'undefined') {
+								clearTimeout(thisClient.heldPieceTimeout);
+								claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
+								dragPiecesToTop(sessions[thisClient.currentgameid], thisClient.holdsPiece.partition);
+							}
 						}
+						console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
+						thisClient.currentgameid = "";
 					}
-					console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
-					thisClient.currentgameid = "";
 				}
 			}
 			thisClient.logout();
@@ -508,8 +510,22 @@ welcome.on('connection', function (socket) {
 						if (i >= 0 && i < sessions[thisClient.currentgameid].puzzle.layout[0]
 						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
 							// is tile not picked up by anyone yet?
-							// note: check other pieces in same partition at this point
 							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) === 'undefined') {
+								// does player already hold a piece? -> drop that first
+								if (typeof(thisClient.holdsPiece) !== 'undefined') {
+									if (typeof(thisClient.heldPieceTimeout) !== 'undefined') clearTimeout(thisClient.heldPieceTimeout);
+									thisClient.heldPieceTimeout = undefined;
+									socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+
+									// remove highlight of held piece
+									for (const client of sessions[thisClient.currentgameid].players) {
+										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+									}
+									thisClient.holdsPiece.heldby = undefined;
+									thisClient.holdsPiece = undefined;
+									// also revert claim on other tiles from same partition
+									claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+								}
 								// claim this piece as held
 								sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
 								thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
@@ -576,9 +592,9 @@ welcome.on('connection', function (socket) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
-
 					// release claim
 					clearTimeout(thisClient.heldPieceTimeout);
+					thisClient.heldPieceTimeout = undefined;
 					socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 					var thisPiece = thisClient.holdsPiece;
 					thisClient.holdsPiece.heldby = undefined;
@@ -589,10 +605,19 @@ welcome.on('connection', function (socket) {
 
 					// check for new connection between pieces of this partition and others
 					// to do this, first update current tile positions in held partition
+					var cosangle = Math.cos(thisPiece.angle*Math.PI/2);
+					var sinangle = Math.sin(thisPiece.angle*Math.PI/2);
 					for (const piece of thisPiece.partition.pieces) {
-						piece.x = thisPiece.x + (piece.x0 - thisPiece.x0);
-						piece.y = thisPiece.y + (piece.y0 - thisPiece.y0);
+						// get coordinates
+						var deltax = (piece.x0[thisPiece.angle] - thisPiece.x0[thisPiece.angle]) * cosangle
+												 - (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * sinangle;
+						var deltay = (piece.x0[thisPiece.angle] - thisPiece.x0[thisPiece.angle]) * sinangle
+												 + (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * cosangle;
+						piece.x = thisPiece.x + deltax;
+						piece.y = thisPiece.y + deltay;
+						piece.angle = thisPiece.angle;
 					}
+
 					// partitionshavechanged counts the number of new connections
 					var partitionshavechanged = 0;
 					for (const piece of thisPiece.partition.pieces) {
@@ -638,8 +663,6 @@ welcome.on('connection', function (socket) {
 					} else {
 						// only update piece positions in this partition
 						for (const piece of thisPiece.partition.pieces) {
-							piece.x = thisPiece.x + (piece.x0 - thisPiece.x0);
-							piece.y = thisPiece.y + (piece.y0 - thisPiece.y0);
 							// send info to clients
 							for (const client of sessions[thisClient.currentgameid].players) {
 								if (typeof(clients[client]) !== 'undefined') {
@@ -671,17 +694,123 @@ welcome.on('connection', function (socket) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
-					// update piece coordinates
-					thisClient.holdsPiece.x = x;
-					thisClient.holdsPiece.y = y;
-					thisClient.holdsPiece.angle = angle;
-					enforce_game_boundary(sessions[thisClient.currentgameid], thisClient.holdsPiece);
-					// note: also update other tiles in the same partition
-					// send updated info to other players in this session
-					for (const client of sessions[thisClient.currentgameid].players) {
-						if (typeof(clients[client]) !== 'undefined' && client !== thisClient.clientID) {
-							welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
-							                                          thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+					// check types of input
+					if (typeof(x) === 'number' && typeof(y) === 'number' && typeof(angle) === 'number') {
+						if (Number.isInteger(angle)) {
+							// update piece coordinates
+							thisClient.holdsPiece.x = x;
+							thisClient.holdsPiece.y = y;
+							var inform_thisClient = angle !== thisClient.holdsPiece.angle;
+							thisClient.holdsPiece.angle = (angle%4 + 4)%4;
+							enforce_game_boundary(sessions[thisClient.currentgameid], thisClient.holdsPiece);
+							// note-: also update other tiles in the same partition
+							// > not needed here if this update is performed on drop & on client side with 'updatePieceCoordinates'
+							// send updated info to other players in this session
+							for (const client of sessions[thisClient.currentgameid].players) {
+								if (typeof(clients[client]) !== 'undefined' && (inform_thisClient || client !== thisClient.clientID)) {
+									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									                                          thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	});
+	// handle client request to turn piece/partition
+	const brief_claim_duration = 500;
+	socket.on('iWantToTurnAPiece', function(i, j, angle) {
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			socket.emit('alert', 'Not logged in. Try reconnecting after refreshing page.');
+			return;
+		}
+		// does the game exist?
+		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is player part of that session?
+			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
+				// are tile indices valid?
+				if (typeof(i) === 'number' && typeof(j) === 'number') {
+					if (Number.isInteger(i) && Number.isInteger(j)) {
+						if (i >= 0 && i < sessions[thisClient.currentgameid].puzzle.layout[0]
+						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
+							// is tile not picked up by anyone yet?
+							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) !== 'undefined') {
+								if (sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby.clientID !== thisClient.clientID) {
+									// decline only if other client has this claim
+									return;
+								}
+								// if this is the same player, remove timeout
+								if (typeof(thisClient.heldPieceTimeout) !== 'undefined') {
+									clearTimeout(thisClient.heldPieceTimeout);
+									thisClient.heldPieceTimeout = undefined;
+									// inform clients to unhighlight tile and update coordinates accordingly
+									for (const client of sessions[thisClient.currentgameid].players) {
+										if (typeof(clients[client]) !== 'undefined') {
+											if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+										}
+									}
+								}
+							}
+							// does player already hold a piece of a different partition? > ignore request.. should not be occurring
+							if (typeof(thisClient.holdsPiece) !== 'undefined') {
+								if (thisClient.holdsPiece.partition.id !== sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition.id) {
+									return;
+								}
+							}
+							// claim this piece as held
+							sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby = thisClient;
+							thisClient.holdsPiece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
+							// apply claim to all pieces in same partition
+							claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], thisClient, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+							dragPiecesToTop(sessions[thisClient.currentgameid], sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+
+							thisClient.holdsPiece.angle = (thisClient.holdsPiece.angle + 1)%4;
+							enforce_game_boundary(sessions[thisClient.currentgameid], thisClient.holdsPiece);
+
+							// inform clients to highlight tile and update coordinates accordingly
+							for (const client of sessions[thisClient.currentgameid].players) {
+								if (typeof(clients[client]) !== 'undefined') {
+									if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+																															thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
+								}
+							}
+
+							// apply this to other pieces of same partition
+	            var cosangle = Math.cos(thisClient.holdsPiece.angle*Math.PI/2);
+	            var sinangle = Math.sin(thisClient.holdsPiece.angle*Math.PI/2);
+							for (const piece of thisClient.holdsPiece.partition.pieces) {
+								// get coordinates
+		            var deltax = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * cosangle
+								             - (piece.y0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.y0[thisClient.holdsPiece.angle]) * sinangle;
+		            var deltay = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * sinangle
+								             + (piece.y0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.y0[thisClient.holdsPiece.angle]) * cosangle;
+								piece.x = thisClient.holdsPiece.x + deltax;
+								piece.y = thisClient.holdsPiece.y + deltay;
+								piece.angle = thisClient.holdsPiece.angle;
+							}
+
+
+							// timeout so that tile is dropped automatically
+							let clientwasholdingthis = thisClient.holdsPiece;
+							thisClient.heldPieceTimeout = setTimeout(function() {
+								if (typeof(thisClient) === 'undefined') return;
+								if (typeof(thisClient.holdsPiece) === 'undefined') return;
+								if (typeof(clientwasholdingthis) === 'undefined') return;
+								if (typeof(sessions[thisClient.currentgameid]) === 'undefined') return;
+								if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
+									for (const client of sessions[thisClient.currentgameid].players) {
+										// remove highlight of held piece
+										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+									}
+									thisClient.holdsPiece.heldby = undefined;
+									thisClient.holdsPiece = undefined;
+									// also revert claim on other tiles from same partition
+									claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, sessions[thisClient.currentgameid].puzzle.pieces[i][j].partition);
+								}
+							}, brief_claim_duration);
 						}
 					}
 				}
@@ -748,7 +877,7 @@ welcome.on('connection', function (socket) {
 
 				// remove client from player list
 				sessions[thisClient.currentgameid].currentplayers--;
-				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.currentgameid), 1);
+				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
 				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
 				thisClient.currentgameid = "";
 			}
@@ -803,44 +932,89 @@ function enforce_game_boundary(someSession, somePiece) {
 	var rightmost = somePiece;
 	var topmost = somePiece;
 	var bottommost = somePiece;
-	for (const piece of somePiece.partition.pieces) {
-		if (piece.x < leftmost.x) {
-			leftmost = piece;
-		}
-		if (piece.x + piece.w > rightmost.x + rightmost.w) {
-			rightmost = piece;
-		}
-		if (piece.y < topmost.y) {
-			topmost = piece;
-		}
-		if (piece.y + piece.h > bottommost.y + bottommost.h) {
-			bottommost = piece;
-		}
+	switch (somePiece.angle) {
+		case 0:
+			for (const piece of somePiece.partition.pieces) {
+				if (piece.x0[0] < leftmost.x0[0]) {
+					leftmost = piece;
+				}
+				if (piece.x0[0] + piece.w > rightmost.x0[0] + rightmost.w) {
+					rightmost = piece;
+				}
+				if (piece.y0[0] < topmost.y0[0]) {
+					topmost = piece;
+				}
+				if (piece.y0[0] + piece.h > bottommost.y0[0] + bottommost.h) {
+					bottommost = piece;
+				}
+			}
+			break;
+		case 1:
+			for (const piece of somePiece.partition.pieces) {
+				if (piece.y0[1] > leftmost.y0[1]) {
+					leftmost = piece;
+				}
+				if (piece.y0[0] < rightmost.y0[0]) {
+					rightmost = piece;
+				}
+				if (piece.x0[0] < topmost.x0[0]) {
+					topmost = piece;
+				}
+				if (piece.x0[2] > bottommost.x0[2]) {
+					bottommost = piece;
+				}
+			}
+			break;
+		case 2:
+			for (const piece of somePiece.partition.pieces) {
+				if (piece.x0[2] > leftmost.x0[2]) {
+					leftmost = piece;
+				}
+				if (piece.x0[0] < rightmost.x0[0]) {
+					rightmost = piece;
+				}
+				if (piece.y0[2] > topmost.y0[2]) {
+					topmost = piece;
+				}
+				if (piece.y0[0] < bottommost.y0[0]) {
+					bottommost = piece;
+				}
+			}
+			break;
+		case 3:
+			for (const piece of somePiece.partition.pieces) {
+				if (piece.y0[3] < leftmost.y0[3]) {
+					leftmost = piece;
+				}
+				if (piece.y0[2] > rightmost.y0[2]) {
+					rightmost = piece;
+				}
+				if (piece.x0[2] > topmost.x0[2]) {
+					topmost = piece;
+				}
+				if (piece.x0[0] < bottommost.x0[0]) {
+					bottommost = piece;
+				}
+			}
+			break;
 	}
+	somePiece.update_partition();
 	// check individual directions and shift partition accordingly..
 	if (leftmost.x < someSession.game_boundary_left) {
 		leftmost.x = someSession.game_boundary_left;
-		for (const piece of somePiece.partition.pieces) {
-			piece.x = leftmost.x + (piece.x0 - leftmost.x0);
-		}
+		leftmost.update_partition();
 	}
 	if (rightmost.x + rightmost.w > someSession.game_boundary_right) {
 		rightmost.x = someSession.game_boundary_right - rightmost.w;
-		for (const piece of somePiece.partition.pieces) {
-			piece.x = rightmost.x + (piece.x0 - rightmost.x0);
-		}
+		rightmost.update_partition();
 	}
 	if (topmost.y < someSession.game_boundary_top) {
 		topmost.y = someSession.game_boundary_top;
-		for (const piece of somePiece.partition.pieces) {
-			piece.y = topmost.y + (piece.y0 - topmost.y0);
-		}
+		topmost.update_partition();
 	}
-	if (bottommost.y + rightmost.h > someSession.game_boundary_bottom) {
-		bottommost.y = someSession.game_boundary_bottom - rightmost.h;
-		for (const piece of somePiece.partition.pieces) {
-			piece.y = bottommost.y + (piece.y0 - bottommost.y0);
-		}
+	if (bottommost.y + bottommost.h > someSession.game_boundary_bottom) {
+		bottommost.y = someSession.game_boundary_bottom - bottommost.h;
+		bottommost.update_partition();
 	}
 }
 
