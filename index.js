@@ -1,4 +1,4 @@
-const version = "0.9.9";
+const version = "0.9.9.1";
 
 // load and setup prerequisites
 var express = require('express');
@@ -195,7 +195,8 @@ welcome.on('connection', function (socket) {
 			                            "currentconnections": sessions[session].currentconnections,
 			                            "totalconnections": sessions[session].totalconnections,
 			                            "difficulty": sessions[session].difficulty,
-			                            "bpassphrase": sessions[session].bpassphrase};
+			                            "bpassphrase": sessions[session].bpassphrase,
+			                            "userotation": sessions[session].userotation};
 		}
 		socket.emit('currentListOfSessions', reducedListOfSessions);
 	});
@@ -217,6 +218,7 @@ welcome.on('connection', function (socket) {
 				  || !("piecesperlength" in some_session_object)
 				  || !("maxplayers" in some_session_object)
 				  || !("difficulty" in some_session_object)
+				  || !("userotation" in some_session_object)
 				  || !("motif" in some_session_object)
 				  || !("motif_res" in some_session_object)) {
 				validinputtypes = false;
@@ -227,6 +229,7 @@ welcome.on('connection', function (socket) {
 				    || typeof(some_session_object.piecesperlength) !== 'number'
 				    || typeof(some_session_object.maxplayers) !== 'number'
 				    || typeof(some_session_object.difficulty) !== 'number'
+						|| typeof(some_session_object.userotation) !== 'boolean'
 				    || typeof(some_session_object.motif) !== 'string'
 				    || typeof(some_session_object.motif_res) !== 'object') {
 					validinputtypes = false;
@@ -325,6 +328,8 @@ welcome.on('connection', function (socket) {
 			style.edges = "flat_irregular";
 		}
 
+		new_session_object.userotation = some_session_object.userotation;
+
 		// check if valid motif data; write to file
 		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
 		if (some_session_object.motif.substr(0, 10) === "data:image") {
@@ -397,6 +402,9 @@ welcome.on('connection', function (socket) {
 		// distribute tiles over game div; for now only fixed setting..
 	//	new_session_object.puzzle.distribute_pieces('completed', thisrng);
 		new_session_object.puzzle.distribute_pieces('randomized_position', thisrng);
+		if (new_session_object.userotation) {
+			new_session_object.puzzle.distribute_angles(thisrng);
+		}
 		// make sure nothing got placed badly
 		for (var i = 0; i < new_session_object.puzzle.layout[0]; i++) {
 			for (var j = 0; j < new_session_object.puzzle.layout[1]; j++) {
@@ -700,8 +708,12 @@ welcome.on('connection', function (socket) {
 							// update piece coordinates
 							thisClient.holdsPiece.x = x;
 							thisClient.holdsPiece.y = y;
-							var inform_thisClient = angle !== thisClient.holdsPiece.angle;
-							thisClient.holdsPiece.angle = (angle%4 + 4)%4;
+							var inform_thisClient = false;
+							// is this session with rotating tiles?
+							if (sessions[thisClient.currentgameid].userotation) {
+								inform_thisClient = angle !== thisClient.holdsPiece.angle;
+								thisClient.holdsPiece.angle = (angle%4 + 4)%4;
+							}
 							enforce_game_boundary(sessions[thisClient.currentgameid], thisClient.holdsPiece);
 							// note-: also update other tiles in the same partition
 							// > not needed here if this update is performed on drop & on client side with 'updatePieceCoordinates'
@@ -728,6 +740,10 @@ welcome.on('connection', function (socket) {
 		}
 		// does the game exist?
 		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			// is this session with rotating tiles?
+			if (!sessions[thisClient.currentgameid].userotation) {
+				return;
+			}
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				// are tile indices valid?
@@ -1025,6 +1041,7 @@ function getfullsessionobject(someSessionID) {
 	somesession["id"] = someSessionID;
 	somesession["currentconnections"] = sessions[someSessionID].puzzle.connectededges;
 	somesession["totalconnections"] = sessions[someSessionID].puzzle.totaledges;
+	somesession["userotation"] = sessions[someSessionID].userotation;
 	somesession["puzzle"] = somepuzzle;
 	somepuzzle["layout"] = sessions[someSessionID].puzzle.layout;
 	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
