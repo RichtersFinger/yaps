@@ -92,6 +92,20 @@
 		  color: white;
 		}
 
+		.scorelist {
+		}
+		.scorelist td {
+		  padding-top: calc(0.5vmin);
+		  padding-bottom: calc(0.5vmin);
+	  	text-align: center;
+		}
+		.scorelist th {
+		  padding-top: calc(0.5vmin);
+		  padding-bottom: calc(0.5vmin);
+		  text-align: left;
+		  color: white;
+		}
+
 		/* custom checkbox */
 		.toggle_checkbox {
 			position: relative;
@@ -430,6 +444,13 @@
 		<div id="div_game_preview" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 2147483641; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
 			<img id="div_game_preview_image" draggable="false" style="position: absolute; outline: calc(0.5vmin) solid #ffffff">
 		</div>
+		<div id="div_game_stats_minimized_fancy" style="position: fixed; z-index: 2147483640; border-radius: 10px; background: rgba(50,50,50,0.5); right: calc(0.5vmin); bottom: calc(5.5vmin); width: calc(25vmin); height: calc(35vmin); overflow: hidden; display: none">
+			<button id="div_game_stats_minimized_fancy_maximizebutton" class="fancybutton" style="position: absolute; right: calc(3.5vmin); top: calc(0.25vmin); margin: calc(0.2vmin); display: grid; align-items: center; transform: scale(0.65)"><img src="img/icons/maximizeicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			<button id="div_game_stats_minimized_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(0vmin); top: calc(0.25vmin); margin: calc(0.2vmin); display: grid; align-items: center; transform: scale(0.65)"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(1.0vmin); margin-top: 0; color: #ffffff; font-size: calc(4vmin)">Scores</h2>
+			<div id="div_game_stats_minimized_fancy_background" style="position: absolute; top: calc(5.5vmin); left: calc(1.5vmin); overflow-x: hidden; overflow-y: auto" class="fancyscrollbar">
+			</div>
+		</div>
 		<!-- indicators for where the game board ends -->
 		<div id="div_game_boundaryoverlay_left" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; background-color: rgba(50,50,50,0.75)" class="noselect"></div>
 		<div id="div_game_boundaryoverlay_right" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; background-color: rgba(50,50,50,0.75)" class="noselect"></div>
@@ -452,6 +473,7 @@
 	</div>
 	<div id="div_game_stats_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
 		<div id="div_game_stats_fancy_background_container" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 12%; width: calc(75vmin); height: 75%; overflow: hidden">
+			<button id="div_game_stats_fancy_minimizebutton" class="fancybutton" style="position: absolute; right: calc(6vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/minimizeicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 			<button id="div_game_stats_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(2.0vmin); margin-top: 0; color: #ffffff; font-size: calc(5vmin)">Current Players</h2>
 			<div id="div_game_stats_fancy_background" style="position: absolute; top: calc(10vmin); height: calc(55vh); overflow-y: auto" class="fancyscrollbar">

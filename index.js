@@ -1,4 +1,4 @@
-const version = "0.9.10";
+const version = "0.9.10.1";
 
 // load and setup prerequisites
 var express = require('express');
@@ -73,8 +73,7 @@ http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, functi
 	console.log("(public ip) " + publicipAPI + " takes unusually long to answer..");
 });
 
-var welcome = io.of('/welcome');
-welcome.on('connection', function (socket) {
+io.on('connection', function (socket) {
 	var userID = socket.id; // user/client identifier for communication
 	var thisClient;
 
@@ -457,7 +456,7 @@ welcome.on('connection', function (socket) {
 					// update current list of players for everyone
 					var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
 					for (const client of sessions[thisClient.currentgameid].players) {
-						welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+						io.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
 					}
 				} else {
 					socket.emit('alert', "This session is full.");
@@ -518,7 +517,7 @@ welcome.on('connection', function (socket) {
 
 									// remove highlight of held piece
 									for (const client of sessions[thisClient.currentgameid].players) {
-										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+										if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 									}
 									thisClient.holdsPiece.heldby = undefined;
 									thisClient.holdsPiece = undefined;
@@ -535,9 +534,9 @@ welcome.on('connection', function (socket) {
 								// inform clients to highlight tile accordingly
 								for (const client of sessions[thisClient.currentgameid].players) {
 									if (typeof(clients[client]) !== 'undefined') {
-										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+										if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
 										for (const piece of thisClient.holdsPiece.partition.pieces) {
-											welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+											io.to(clients[client].socketID).emit('updatePieceCoordinates',
 																																piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 										}
 									}
@@ -556,12 +555,12 @@ welcome.on('connection', function (socket) {
 										for (const client of sessions[thisClient.currentgameid].players) {
 											if (typeof(clients[client]) !== 'undefined') {
 												for (const piece of thisClient.holdsPiece.partition.pieces) {
-													welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+													io.to(clients[client].socketID).emit('updatePieceCoordinates',
 													                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 												}
 											}
 											// remove highlight of held piece
-											if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+											if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 										}
 										thisClient.holdsPiece.heldby = undefined;
 										thisClient.holdsPiece = undefined;
@@ -635,7 +634,7 @@ welcome.on('connection', function (socket) {
 							// update current list of players for everyone
 							var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
 							for (const client of sessions[thisClient.currentgameid].players) {
-								welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+								io.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
 							}
 						}
 
@@ -650,7 +649,7 @@ welcome.on('connection', function (socket) {
 							if (typeof(clients[client]) !== 'undefined') {
 								// update piece coordinates
 								for (const piece of thisPiece.partition.pieces) {
-									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 								}
 
@@ -658,20 +657,20 @@ welcome.on('connection', function (socket) {
 								if (typeof(clients[client].holdsPiece) !== 'undefined') {
 									dragPiecesToTop(sessions[thisClient.currentgameid], clients[client].holdsPiece.partition);
 									for (const piece of clients[client].holdsPiece.partition.pieces) {
-										welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+										io.to(clients[client].socketID).emit('updatePieceCoordinates',
 										                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 									}
 								}
 
 								// also submit new partition info
-								welcome.to(clients[client].socketID).emit('updatePuzzlePartitions', currentpartitions);
+								io.to(clients[client].socketID).emit('updatePuzzlePartitions', currentpartitions);
 
 								// also submit new progress
 								sessions[thisClient.currentgameid].currentconnections = sessions[thisClient.currentgameid].puzzle.connectededges;
-								welcome.to(clients[client].socketID).emit('updatePuzzleProgress', sessions[thisClient.currentgameid].currentconnections);
+								io.to(clients[client].socketID).emit('updatePuzzleProgress', sessions[thisClient.currentgameid].currentconnections);
 
 								// play sfx for all clients
-								welcome.to(clients[client].socketID).emit('playSFX_combine', partitionshavechanged);
+								io.to(clients[client].socketID).emit('playSFX_combine', partitionshavechanged);
 							}
 						}
 					} else {
@@ -680,7 +679,7 @@ welcome.on('connection', function (socket) {
 							// send info to clients
 							for (const client of sessions[thisClient.currentgameid].players) {
 								if (typeof(clients[client]) !== 'undefined') {
-									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 								}
 							}
@@ -689,7 +688,7 @@ welcome.on('connection', function (socket) {
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
 						if (typeof(clients[client]) !== 'undefined') {
-							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
+							if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
 						}
 					}
 				}
@@ -726,7 +725,7 @@ welcome.on('connection', function (socket) {
 							// send updated info to other players in this session
 							for (const client of sessions[thisClient.currentgameid].players) {
 								if (typeof(clients[client]) !== 'undefined' && (inform_thisClient || client !== thisClient.clientID)) {
-									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 								}
 							}
@@ -770,7 +769,7 @@ welcome.on('connection', function (socket) {
 									// inform clients to unhighlight tile and update coordinates accordingly
 									for (const client of sessions[thisClient.currentgameid].players) {
 										if (typeof(clients[client]) !== 'undefined') {
-											if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+											if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 										}
 									}
 								}
@@ -794,8 +793,8 @@ welcome.on('connection', function (socket) {
 							// inform clients to highlight tile and update coordinates accordingly
 							for (const client of sessions[thisClient.currentgameid].players) {
 								if (typeof(clients[client]) !== 'undefined') {
-									if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
-									welcome.to(clients[client].socketID).emit('updatePieceCoordinates',
+									if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
+									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 																															thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 								}
 							}
@@ -825,7 +824,7 @@ welcome.on('connection', function (socket) {
 								if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 									for (const client of sessions[thisClient.currentgameid].players) {
 										// remove highlight of held piece
-										if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
+										if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 									}
 									thisClient.holdsPiece.heldby = undefined;
 									thisClient.holdsPiece = undefined;
@@ -889,14 +888,14 @@ welcome.on('connection', function (socket) {
 						console.log("host kicked " + sessions[thisClient.currentgameid].playerToBeKicked.clientID + " (" + sessions[thisClient.currentgameid].playerToBeKicked.name + ") from session " + thisClient.currentgameid);
 						sessions[thisClient.currentgameid].kickedPlayers.push(sessions[thisClient.currentgameid].playerToBeKicked.clientID);
 						cleanUpClientObject(sessions[thisClient.currentgameid].playerToBeKicked);
-						welcome.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('youCanLeave');
-						welcome.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('alert', "You have been kicked by the host.");
+						io.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('youCanLeave');
+						io.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('alert', "You have been kicked by the host.");
 						sessions[thisClient.currentgameid].playerToBeKicked = undefined;
 
 						// update current list of players for everyone
 						var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
 						for (const client of sessions[thisClient.currentgameid].players) {
-							welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+							io.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
 						}
 					}
 				}
@@ -918,7 +917,7 @@ welcome.on('connection', function (socket) {
 				// update current list of players for everyone
 				var currentStats = getCurrentListofPlayers(someSession);
 				for (const client of someSession.players) {
-					welcome.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
+					io.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
 				}
 			}
 		}
@@ -939,7 +938,7 @@ welcome.on('connection', function (socket) {
 				// update current list of players for everyone
 				var currentStats = getCurrentListofPlayers(someSession);
 				for (const client of someSession.players) {
-					welcome.to(clients[client].socketID).emit('currentStats', currentStats,someSession.currentHost === client);
+					io.to(clients[client].socketID).emit('currentStats', currentStats,someSession.currentHost === client);
 				}
 			}
 		}
@@ -959,7 +958,7 @@ welcome.on('connection', function (socket) {
 				// update current list of players for everyone
 				var currentStats = getCurrentListofPlayers(someSession);
 				for (const client of someSession.players) {
-					welcome.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
+					io.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
 				}
 			}
 		}
@@ -1159,7 +1158,7 @@ function cleanUpClientObject(someClient) {
 		// remove highlight of held piece
 		for (const client of sessions[someClient.currentgameid].players) {
 			if (typeof(clients[client]) !== 'undefined') {
-				if (clients[client].clientID !== someClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', someClient.holdsPiece.i, someClient.holdsPiece.j);
+				if (clients[client].clientID !== someClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', someClient.holdsPiece.i, someClient.holdsPiece.j);
 			}
 		}
 		someClient.holdsPiece = undefined;
