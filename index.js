@@ -1,4 +1,4 @@
-const version = "0.9.9.1";
+const version = "0.9.10";
 
 // load and setup prerequisites
 var express = require('express');
@@ -115,34 +115,6 @@ welcome.on('connection', function (socket) {
 		console.log("registered new client", userID);
 		thisClient.login();
 	});
-	// logout client if they exist and are associated with the most recent socket id
-	socket.on('disconnect', function(){
-		if (typeof(thisClient) === 'undefined') {
-			return;
-		}
-		if (thisClient.socketID === userID) {
-    	console.log("user", thisClient.clientID, " left");
-			if (thisClient.currentgameid !== "") {
-				if (sessions[thisClient.currentgameid]) {
-					if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
-						sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
-						sessions[thisClient.currentgameid].currentplayers--;
-						// also revert claim on player-held tiles if any
-						if (typeof(thisClient) !== 'undefined') {
-							if (typeof(thisClient.holdsPiece) !== 'undefined') {
-								clearTimeout(thisClient.heldPieceTimeout);
-								claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
-								dragPiecesToTop(sessions[thisClient.currentgameid], thisClient.holdsPiece.partition);
-							}
-						}
-						console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
-						thisClient.currentgameid = "";
-					}
-				}
-			}
-			thisClient.logout();
-		}
-	});
 	// client wants to update displayed name
 	const nMaximumCharacters = 20;
 	socket.on('myNameIs', function(newDisplayedName){
@@ -186,9 +158,8 @@ welcome.on('connection', function (socket) {
 	// client requests a current list of sessions
 	socket.on('iNeedANewList', function(){
 		var reducedListOfSessions = [];
-		var i = 0;
 		for (const session in sessions) {
-			reducedListOfSessions[i++] = {"sessionid": sessions[session].id,
+			reducedListOfSessions.push({"sessionid": sessions[session].id,
 			                            "name": sessions[session].name,
 			                            "currentplayers": sessions[session].currentplayers,
 			                            "maxplayers": sessions[session].maxplayers,
@@ -196,7 +167,7 @@ welcome.on('connection', function (socket) {
 			                            "totalconnections": sessions[session].totalconnections,
 			                            "difficulty": sessions[session].difficulty,
 			                            "bpassphrase": sessions[session].bpassphrase,
-			                            "userotation": sessions[session].userotation};
+			                            "userotation": sessions[session].userotation});
 		}
 		socket.emit('currentListOfSessions', reducedListOfSessions);
 	});
@@ -219,6 +190,7 @@ welcome.on('connection', function (socket) {
 				  || !("maxplayers" in some_session_object)
 				  || !("difficulty" in some_session_object)
 				  || !("userotation" in some_session_object)
+				  || !("competitive" in some_session_object)
 				  || !("motif" in some_session_object)
 				  || !("motif_res" in some_session_object)) {
 				validinputtypes = false;
@@ -230,6 +202,7 @@ welcome.on('connection', function (socket) {
 				    || typeof(some_session_object.maxplayers) !== 'number'
 				    || typeof(some_session_object.difficulty) !== 'number'
 						|| typeof(some_session_object.userotation) !== 'boolean'
+						|| typeof(some_session_object.competitive) !== 'boolean'
 				    || typeof(some_session_object.motif) !== 'string'
 				    || typeof(some_session_object.motif_res) !== 'object') {
 					validinputtypes = false;
@@ -329,6 +302,7 @@ welcome.on('connection', function (socket) {
 		}
 
 		new_session_object.userotation = some_session_object.userotation;
+		new_session_object.competitive = some_session_object.competitive;
 
 		// check if valid motif data; write to file
 		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
@@ -415,6 +389,8 @@ welcome.on('connection', function (socket) {
 		// add some more info to session object
 		new_session_object.id = sessionid;
 		new_session_object.currentHost = thisClient.clientID;
+		new_session_object.playerToBeKicked = undefined;
+		new_session_object.kickedPlayers = [];
 		sessions[sessionid] = new_session_object;
 
 		sessions[sessionid].currentplayers = 1;
@@ -445,6 +421,12 @@ welcome.on('connection', function (socket) {
 		// check if session id valid and this session exists
 		if (typeof(some_session_id) === 'string') {
 			if (typeof(sessions[some_session_id]) !== 'undefined') {
+				// prevent client from entering if already kicked from session
+				if (sessions[some_session_id].kickedPlayers.includes(thisClient.clientID)) {
+					socket.emit('alert', 'You have been kicked from that session.');
+					socket.emit('releaseBlockedInterface');
+					return;
+				}
 				// is session full?
 				if (sessions[some_session_id].currentplayers < sessions[some_session_id].maxplayers) {
 					// is passphrase necessary + correct
@@ -467,7 +449,16 @@ welcome.on('connection', function (socket) {
 					socket.emit('enterThisSession', getfullsessionobject(some_session_id));
 					sessions[some_session_id].players.push(thisClient.clientID);
 					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
-					// note: send more info (partitions, ??) | implement that as client signaling that they want an update
+					// make new host if necessary
+					if (sessions[some_session_id].currentHost === "") {
+						sessions[some_session_id].currentHost = thisClient.clientID;
+						console.log('new host in ' + some_session_id + ': ' + sessions[some_session_id].currentHost + ' (' + thisClient.name + ')');
+					}
+					// update current list of players for everyone
+					var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
+					for (const client of sessions[thisClient.currentgameid].players) {
+						welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+					}
 				} else {
 					socket.emit('alert', "This session is full.");
 					socket.emit('releaseBlockedInterface');
@@ -634,6 +625,21 @@ welcome.on('connection', function (socket) {
 
 					// notify everyone about changes (if necessary)
 					if (partitionshavechanged > 0) {
+						// update scores
+						if (sessions[thisClient.currentgameid].competitive) {
+							thisClient.connectionCounter += partitionshavechanged;
+							if (!(thisClient.currentgameid in thisClient.sessionConnectionCounter))
+								thisClient.sessionConnectionCounter[thisClient.currentgameid] = partitionshavechanged;
+							else
+								thisClient.sessionConnectionCounter[thisClient.currentgameid] += partitionshavechanged;
+							// update current list of players for everyone
+							var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
+							for (const client of sessions[thisClient.currentgameid].players) {
+								welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+							}
+						}
+
+
 						enforce_game_boundary(sessions[thisClient.currentgameid], thisPiece);
 						// adjust z-Index
 						dragPiecesToTop(sessions[thisClient.currentgameid], thisPiece.partition);
@@ -833,6 +839,91 @@ welcome.on('connection', function (socket) {
 			}
 		}
 	});
+	// client requests a current list of sessions
+	socket.on('iNeedCurrentStats', function(){
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			return;
+		}
+		// is client in a game?
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
+				socket.emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === thisClient.clientID);
+			}
+		}
+	});
+	// client requests to kick a certain player (index someindex in current list)
+	// verification step
+	socket.on('iWantToKickPlayer', function(someindex){
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			return;
+		}
+		// is client in a game?
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				// is this client the host?
+				if (sessions[thisClient.currentgameid].currentHost === thisClient.clientID) {
+					sessions[thisClient.currentgameid].playerToBeKicked = clients[sessions[thisClient.currentgameid].players[someindex]];
+					if (typeof(sessions[thisClient.currentgameid].playerToBeKicked) !== 'undefined') {
+						socket.emit('confirmKickPlayer', clients[sessions[thisClient.currentgameid].players[someindex]].name);
+					}
+				}
+				socket.emit('currentStats', getCurrentListofPlayers(sessions[thisClient.currentgameid]), sessions[thisClient.currentgameid].currentHost === thisClient.clientID);
+			}
+		}
+	});
+	// confirmation step
+	socket.on('iWantToConfirmKickPlayer', function(){
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			return;
+		}
+		// is client in a game?
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				// is this client the host?
+				if (sessions[thisClient.currentgameid].currentHost === thisClient.clientID) {
+					if (typeof(sessions[thisClient.currentgameid].playerToBeKicked) !== 'undefined') {
+						console.log("host kicked " + sessions[thisClient.currentgameid].playerToBeKicked.clientID + " (" + sessions[thisClient.currentgameid].playerToBeKicked.name + ") from session " + thisClient.currentgameid);
+						sessions[thisClient.currentgameid].kickedPlayers.push(sessions[thisClient.currentgameid].playerToBeKicked.clientID);
+						cleanUpClientObject(sessions[thisClient.currentgameid].playerToBeKicked);
+						welcome.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('youCanLeave');
+						welcome.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('alert', "You have been kicked by the host.");
+						sessions[thisClient.currentgameid].playerToBeKicked = undefined;
+
+						// update current list of players for everyone
+						var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
+						for (const client of sessions[thisClient.currentgameid].players) {
+							welcome.to(clients[client].socketID).emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === client);
+						}
+					}
+				}
+			}
+		}
+	});
+	// handle client disconnect(lost connection/closed tab) to leave game session
+	socket.on('disconnect', function(){
+		// is user logged in?
+		if (typeof(thisClient) === 'undefined') {
+			return;
+		}
+    console.log("user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
+		// does the game exist?
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				var someSession = sessions[thisClient.currentgameid];
+				cleanUpClientObject(thisClient);
+				// update current list of players for everyone
+				var currentStats = getCurrentListofPlayers(someSession);
+				for (const client of someSession.players) {
+					welcome.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
+				}
+			}
+		}
+		thisClient.logout();
+	});
 	// handle client request to leave game session
 	socket.on('iWantToLeaveMySession', function() {
 		// is user logged in?
@@ -841,28 +932,15 @@ welcome.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
-			// is player part of that session?
-			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
-				// drop currently held piece (if any)
-				if (typeof(thisClient.holdsPiece) !== 'undefined') {
-					clearTimeout(thisClient.heldPieceTimeout);
-					// revert claim on other tiles from same partition
-					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
-					// remove highlight of held piece
-					for (const client of sessions[thisClient.currentgameid].players) {
-						if (typeof(clients[client]) !== 'undefined') {
-							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
-						}
-					}
-					thisClient.holdsPiece = undefined;
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				var someSession = sessions[thisClient.currentgameid];
+				cleanUpClientObject(thisClient);
+				// update current list of players for everyone
+				var currentStats = getCurrentListofPlayers(someSession);
+				for (const client of someSession.players) {
+					welcome.to(clients[client].socketID).emit('currentStats', currentStats,someSession.currentHost === client);
 				}
-
-				// remove client from player list
-				sessions[thisClient.currentgameid].currentplayers--;
-				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
-				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
-				thisClient.currentgameid = "";
 			}
 		}
 		socket.emit('youCanLeave');
@@ -874,28 +952,15 @@ welcome.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
-			// is player part of that session?
-			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
-				// drop currently held piece (if any)
-				if (typeof(thisClient.holdsPiece) !== 'undefined') {
-					clearTimeout(thisClient.heldPieceTimeout);
-					// revert claim on other tiles from same partition
-					claimAllPiecesWithinPartition(sessions[thisClient.currentgameid], undefined, thisClient.holdsPiece.partition);
-					// remove highlight of held piece
-					for (const client of sessions[thisClient.currentgameid].players) {
-						if (typeof(clients[client]) !== 'undefined') {
-							if (clients[client].clientID !== thisClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
-						}
-					}
-					thisClient.holdsPiece = undefined;
+		if (thisClient.currentgameid !== "") {
+			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+				var someSession = sessions[thisClient.currentgameid];
+				cleanUpClientObject(thisClient);
+				// update current list of players for everyone
+				var currentStats = getCurrentListofPlayers(someSession);
+				for (const client of someSession.players) {
+					welcome.to(clients[client].socketID).emit('currentStats', currentStats, someSession.currentHost === client);
 				}
-
-				// remove client from player list
-				sessions[thisClient.currentgameid].currentplayers--;
-				sessions[thisClient.currentgameid].players.splice(sessions[thisClient.currentgameid].players.indexOf(thisClient.clientID), 1);
-				console.log('> ' + thisClient.currentgameid + ': ' + sessions[thisClient.currentgameid].currentplayers + '/' + sessions[thisClient.currentgameid].maxplayers);
-				thisClient.currentgameid = "";
 			}
 		}
 	});
@@ -940,7 +1005,6 @@ function dragPiecesToTop(someSession, somePartition) {
 		piece.z = newz;
 	}
 }
-
 
 function enforce_game_boundary(someSession, somePiece) {
 	// find boundary of partition
@@ -1042,6 +1106,7 @@ function getfullsessionobject(someSessionID) {
 	somesession["currentconnections"] = sessions[someSessionID].puzzle.connectededges;
 	somesession["totalconnections"] = sessions[someSessionID].puzzle.totaledges;
 	somesession["userotation"] = sessions[someSessionID].userotation;
+	somesession["competitive"] = sessions[someSessionID].competitive;
 	somesession["puzzle"] = somepuzzle;
 	somepuzzle["layout"] = sessions[someSessionID].puzzle.layout;
 	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
@@ -1063,13 +1128,65 @@ function getfullsessionobject(someSessionID) {
 			pieces[i][j]["h"] = sessions[someSessionID].puzzle.pieces[i][j].h;
 			pieces[i][j]["edges"] = sessions[someSessionID].puzzle.pieces[i][j].edges;
 			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
-		// this is done client-side via puzzle seed
-		//	pieces[i][j]["w"] = sessions[someSessionID].puzzle.pieces[i][j].w;
-		//	pieces[i][j]["h"] = sessions[someSessionID].puzzle.pieces[i][j].h;
 		}
 	}
 	somepuzzle["pieces"] = pieces;
 	return somesession;
+}
+
+// make a current list of players in someSession
+function getCurrentListofPlayers(someSession) {
+	var result = [];
+	for (const clientID of someSession.players) {
+		if (typeof(clients[clientID]) === 'undefined') continue;
+		if (!(someSession.id in clients[clientID].sessionConnectionCounter))
+			clients[clientID].sessionConnectionCounter[someSession.id] = 0;
+		result.push({"name": clients[clientID].name,
+											 "colorID": clients[clientID].colorID,
+											 "isHost": sessions[someSession.id].currentHost === clientID,
+											 "sessionConnectionCounter": clients[clientID].sessionConnectionCounter[someSession.id],
+											 "connectionCounter": clients[clientID].connectionCounter});
+	}
+	return result;
+}
+
+// clean up client object after disconnect from session
+function cleanUpClientObject(someClient) {
+	// clear holdsPiece (client)/heldby (pieces)
+	if (typeof(someClient.holdsPiece) !== 'undefined') {
+		// revert claim on other tiles from same partition
+		claimAllPiecesWithinPartition(sessions[someClient.currentgameid], undefined, someClient.holdsPiece.partition);
+		// remove highlight of held piece
+		for (const client of sessions[someClient.currentgameid].players) {
+			if (typeof(clients[client]) !== 'undefined') {
+				if (clients[client].clientID !== someClient.clientID) welcome.to(clients[client].socketID).emit('unhighlightPiece', someClient.holdsPiece.i, someClient.holdsPiece.j);
+			}
+		}
+		someClient.holdsPiece = undefined;
+	}
+	// clear heldPieceTimeout
+	if (typeof(someClient.heldPieceTimeout) !== 'undefined') {
+		clearTimeout(someClient.heldPieceTimeout);
+		someClient.heldPieceTimeout = undefined;
+	}
+	var currentgameid = someClient.currentgameid;
+	// remove client from player list
+	if (sessions[someClient.currentgameid].players.includes(someClient.clientID)) {
+		sessions[someClient.currentgameid].currentplayers--;
+		sessions[someClient.currentgameid].players.splice(sessions[someClient.currentgameid].players.indexOf(someClient.clientID), 1);
+		console.log('> ' + someClient.currentgameid + ': ' + sessions[someClient.currentgameid].currentplayers + '/' + sessions[someClient.currentgameid].maxplayers);
+		someClient.currentgameid = "";
+	}
+	// find new host if necessary
+	if (sessions[currentgameid].currentHost === someClient.clientID) {
+		if (sessions[currentgameid].players.length > 0) {
+			sessions[currentgameid].currentHost = sessions[currentgameid].players[0];
+			console.log('new host in ' + currentgameid + ': ' + sessions[currentgameid].currentHost + ' (' + clients[sessions[currentgameid].currentHost].name + ')');
+		} else {
+			sessions[currentgameid].currentHost = "";
+		}
+		sessions[currentgameid].playerToBeKicked = undefined;
+	}
 }
 
 // encode base64-image, save to file

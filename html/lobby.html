@@ -295,7 +295,16 @@
 	<div id="div_alert_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
 		<div id="div_alert_fancy_background" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 40%; width: 50%">
 			<button id="div_alert_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
-			<p  id="div_alert_fancy_p" style="font-family: Arial, sans-serif; color: #ffffff; font-size: calc(5vmin); margin-top: calc(6vmin); width: 90%">This message should not be visible.</p>
+			<p id="div_alert_fancy_p" style="font-family: Arial, sans-serif; color: #ffffff; font-size: calc(5vmin); margin-top: calc(6vmin); width: 90%">This message should not be visible.</p>
+		</div>
+	</div>
+	<div id="div_confirm_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
+		<div id="div_confirm_fancy_background" style="position: absolute; display: flex; justify-content: left; border-radius: 10px; background: rgba(50,50,50,0.5); top: 40%; width: 50%">
+			<p id="div_confirm_fancy_background_p_container" style="position:relative">
+				<p id="div_confirm_fancy_p" style="position:relative; font-family: Arial, sans-serif; color: #ffffff; font-size: calc(3vmin); margin-top: calc(1.5vmin); margin-left: calc(2vmin); padding-bottom: calc(4.5vmin); width: 95%">This message should not be visible.</p>
+				<button id="div_confirm_fancy_cancelbutton" class="fancybutton" style="position:absolute; left: calc(7vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); margin-top: calc(1vmin); margin-bottom: calc(1vmin); display: grid; align-items: center"><img src="img/icons/aborticon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+				<button id="div_confirm_fancy_confirmbutton" class="fancybutton" style="position:absolute; left: calc(2vmin); bottom: calc(0.5vmin); margin: calc(0.2vmin); margin-top: calc(1vmin); margin-bottom: calc(1vmin); display: grid; align-items: center; display: none"><img src="img/icons/confirmicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			</p>
 		</div>
 	</div>
 	<div id="div_passphrase_fancy" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
@@ -379,15 +388,21 @@
 						-->
 					</div>
 
-
-					<h2 style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Rotate Tiles</h2>
-					<div id="div_lobby_content_newgame_settings_use_rotation_check_container" style="position: absolute; left: min(calc(30.5vw), calc(30.5vmin)); top: calc(24.0vmin); transform: scale(0.7)">
+					<h2 style="position: absolute; left: min(calc(26.5vw), calc(26.5vmin)); top: calc(21.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Rotate Tiles</h2>
+					<div id="div_lobby_content_newgame_settings_use_rotation_check_container" style="position: absolute; left: min(calc(38.0vw), calc(38.0vmin)); top: calc(20.9vmin); transform: scale(0.7)">
 						<label class="toggle_checkbox" style="">
 							<input type="checkbox" id="div_lobby_content_newgame_settings_use_rotation_check">
 							<span class="slider"></span>
 						</label>
 					</div>
-					<input type="text" id="div_lobby_content_newgame_settings_passphrase" placeholder="passphrase" style="position: absolute; left: min(calc(6.0vmin), calc(6.0vw)); top: calc(10.2vmin); color: #ffffff; font-size: calc(2vmin); width: min(70%, 30vmin); background: rgba(50,50,50,0.5); opacity: 0.5" disable = true>
+
+					<h2 style="position: absolute; left: min(calc(26.5vw), calc(26.5vmin)); top: calc(25.5vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Competitive</h2>
+					<div id="div_lobby_content_newgame_settings_competitive_check_container" style="position: absolute; left: min(calc(38.0vw), calc(38.0vmin)); top: calc(25.0vmin); transform: scale(0.7)">
+						<label class="toggle_checkbox" style="">
+							<input type="checkbox" id="div_lobby_content_newgame_settings_competitive_check">
+							<span class="slider"></span>
+						</label>
+					</div>
 
 
 					<h2 style="position: absolute; left: calc(0.5vw); top: calc(28.4vmin); margin-top: 0; color: #ffffff; font-size: calc(2vmin)">Motif</h2>
@@ -422,16 +437,24 @@
 		<div id="div_game_boundaryoverlay_bottom" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; background-color: rgba(50,50,50,0.75)" class="noselect"></div>
 		<div id="div_game_boundaryoverlay_border" style="position: absolute; z-index: 2147483639; width: 100%; height: 100%; outline: calc(0.5vmin) solid #ffffff; pointer-events: none" class="noselect"></div>
 	</div>
-	<div id="div_settings_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
-		<div id="div_settings_fancy_background" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 12%; width: calc(75vmin); height: 75%; overflow-x: hidden; overflow-y: auto" class="fancyscrollbar">
-			<button id="div_settings_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+	<div id="div_game_settings_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
+		<div id="div_game_settings_fancy_background" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 12%; width: calc(75vmin); height: 75%; overflow-x: hidden; overflow-y: auto" class="fancyscrollbar">
+			<button id="div_game_settings_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(2.0vh); margin-top: 0; color: #ffffff; font-size: calc(5vh)">Settings</h2>
 			<h2 style="position: absolute; left: calc(1.5vmin); top: calc(8.0vh); margin-top: 0; color: #ffffff; font-size: calc(3.5vh)">Background</h2>
-			<div id="div_settings_fancy_backgrounds" style="position: absolute; display: inline-block; left: 2%; top: calc(13.4vh); width: 90%;">
-				<button id="div_settings_fancy_backgrounds_button0" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/wood_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
-				<button id="div_settings_fancy_backgrounds_button1" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/marble_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
-				<button id="div_settings_fancy_backgrounds_button2" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/leather_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
-				<button id="div_settings_fancy_backgrounds_button3" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/abstract_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
+			<div id="div_game_settings_fancy_backgrounds" style="position: absolute; display: inline-block; left: 2%; top: calc(13.4vh); width: 90%;">
+				<button id="div_game_settings_fancy_backgrounds_button0" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/wood_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
+				<button id="div_game_settings_fancy_backgrounds_button1" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/marble_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
+				<button id="div_game_settings_fancy_backgrounds_button2" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/leather_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
+				<button id="div_game_settings_fancy_backgrounds_button3" class="fancybutton" style="position: relative; z-index: 2147483640; margin: calc(0.2vmin); width: calc(15vmin); height: calc(15vmin); display: inline-block; align-items: center"><img src="img/back/abstract_seamless.jpeg" width="90%" height="90%" style="position: absolute; left: 5%; right: 5%; bottom: 5%; top: 5%" draggable="false"></button>
+			</div>
+		</div>
+	</div>
+	<div id="div_game_stats_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
+		<div id="div_game_stats_fancy_background_container" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 12%; width: calc(75vmin); height: 75%; overflow: hidden">
+			<button id="div_game_stats_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(2.0vmin); margin-top: 0; color: #ffffff; font-size: calc(5vmin)">Current Players</h2>
+			<div id="div_game_stats_fancy_background" style="position: absolute; top: calc(10vmin); height: calc(55vh); overflow-y: auto" class="fancyscrollbar">
 			</div>
 		</div>
 	</div>
