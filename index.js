@@ -1,4 +1,4 @@
-const version = "0.9.10.1";
+const version = "0.9.11";
 
 // load and setup prerequisites
 var express = require('express');
@@ -80,7 +80,7 @@ io.on('connection', function (socket) {
 	// client says they visited before
 	socket.on('iamaknownclient', function (previousname) {
 		if (typeof(previousname) === 'string') {
-			if (typeof(clients[previousname]) !== 'undefined') {
+			if (previousname in clients) {
 				if (clients[previousname].loggedIn) {
 					// register as new client anyway
 					clients[userID] = new client(userID, userID);
@@ -234,7 +234,7 @@ io.on('connection', function (socket) {
 		var foundValidID = false;
 		for (var i = 0; i < nMaximumRetriesFindingID; i++) {
 			sessionid = gethash(some_session_object.name + some_session_object.motif + i);
-			if (typeof(sessions[sessionid]) === 'undefined') {
+			if (!(sessionid in sessions)) {
 				foundValidID = true;
 				break;
 			}
@@ -419,7 +419,7 @@ io.on('connection', function (socket) {
 		}
 		// check if session id valid and this session exists
 		if (typeof(some_session_id) === 'string') {
-			if (typeof(sessions[some_session_id]) !== 'undefined') {
+			if (some_session_id in sessions) {
 				// prevent client from entering if already kicked from session
 				if (sessions[some_session_id].kickedPlayers.includes(thisClient.clientID)) {
 					socket.emit('alert', 'You have been kicked from that session.');
@@ -479,7 +479,7 @@ io.on('connection', function (socket) {
 
 		// check if session id valid and this session exists
 		if (typeof(thisClient.currentgameid) === 'string') {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				for (var i = 0; i < sessions[thisClient.currentgameid].puzzle.layout[0]; i++) {
 					for (var j = 0; j < sessions[thisClient.currentgameid].puzzle.layout[1]; j++) {
 						piece = sessions[thisClient.currentgameid].puzzle.pieces[i][j];
@@ -499,7 +499,7 @@ io.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+		if (thisClient.currentgameid in sessions) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				// are tile indices valid?
@@ -533,7 +533,7 @@ io.on('connection', function (socket) {
 
 								// inform clients to highlight tile accordingly
 								for (const client of sessions[thisClient.currentgameid].players) {
-									if (typeof(clients[client]) !== 'undefined') {
+									if (client in clients) {
 										if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
 										for (const piece of thisClient.holdsPiece.partition.pieces) {
 											io.to(clients[client].socketID).emit('updatePieceCoordinates',
@@ -548,12 +548,12 @@ io.on('connection', function (socket) {
 									if (typeof(thisClient) === 'undefined') return;
 									if (typeof(thisClient.holdsPiece) === 'undefined') return;
 									if (typeof(clientwasholdingthis) === 'undefined') return;
-									if (typeof(sessions[thisClient.currentgameid]) === 'undefined') return;
+									if (!(thisClient.currentgameid in sessions)) return;
 									if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 										socket.emit('stopMovingPiece', thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 
 										for (const client of sessions[thisClient.currentgameid].players) {
-											if (typeof(clients[client]) !== 'undefined') {
+											if (client in clients) {
 												for (const piece of thisClient.holdsPiece.partition.pieces) {
 													io.to(clients[client].socketID).emit('updatePieceCoordinates',
 													                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
@@ -586,7 +586,7 @@ io.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+		if (thisClient.currentgameid in sessions) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
@@ -646,7 +646,7 @@ io.on('connection', function (socket) {
 						// send updated info to other players in this session
 						var currentpartitions = getClientSidePartitionObject(sessions[thisClient.currentgameid].puzzle);
 						for (const client of sessions[thisClient.currentgameid].players) {
-							if (typeof(clients[client]) !== 'undefined') {
+							if (client in clients) {
 								// update piece coordinates
 								for (const piece of thisPiece.partition.pieces) {
 									io.to(clients[client].socketID).emit('updatePieceCoordinates',
@@ -678,7 +678,7 @@ io.on('connection', function (socket) {
 						for (const piece of thisPiece.partition.pieces) {
 							// send info to clients
 							for (const client of sessions[thisClient.currentgameid].players) {
-								if (typeof(clients[client]) !== 'undefined') {
+								if (client in clients) {
 									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 								}
@@ -687,7 +687,7 @@ io.on('connection', function (socket) {
 					}
 					// remove highlight of held piece
 					for (const client of sessions[thisClient.currentgameid].players) {
-						if (typeof(clients[client]) !== 'undefined') {
+						if (client in clients) {
 							if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisPiece.i, thisPiece.j);
 						}
 					}
@@ -703,7 +703,7 @@ io.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+		if (thisClient.currentgameid in sessions) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
@@ -724,7 +724,7 @@ io.on('connection', function (socket) {
 							// > not needed here if this update is performed on drop & on client side with 'updatePieceCoordinates'
 							// send updated info to other players in this session
 							for (const client of sessions[thisClient.currentgameid].players) {
-								if (typeof(clients[client]) !== 'undefined' && (inform_thisClient || client !== thisClient.clientID)) {
+								if (client in clients && (inform_thisClient || client !== thisClient.clientID)) {
 									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 									                                          thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
 								}
@@ -744,7 +744,7 @@ io.on('connection', function (socket) {
 			return;
 		}
 		// does the game exist?
-		if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+		if (thisClient.currentgameid in sessions) {
 			// is this session with rotating tiles?
 			if (!sessions[thisClient.currentgameid].userotation) {
 				return;
@@ -768,7 +768,7 @@ io.on('connection', function (socket) {
 									thisClient.heldPieceTimeout = undefined;
 									// inform clients to unhighlight tile and update coordinates accordingly
 									for (const client of sessions[thisClient.currentgameid].players) {
-										if (typeof(clients[client]) !== 'undefined') {
+										if (client in clients) {
 											if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j);
 										}
 									}
@@ -792,7 +792,7 @@ io.on('connection', function (socket) {
 
 							// inform clients to highlight tile and update coordinates accordingly
 							for (const client of sessions[thisClient.currentgameid].players) {
-								if (typeof(clients[client]) !== 'undefined') {
+								if (client in clients) {
 									if (clients[client].clientID !== thisClient.clientID) io.to(clients[client].socketID).emit('highlightPiece', thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.colorID, thisClient.name);
 									io.to(clients[client].socketID).emit('updatePieceCoordinates',
 																															thisClient.holdsPiece.i, thisClient.holdsPiece.j, thisClient.holdsPiece.x, thisClient.holdsPiece.y, thisClient.holdsPiece.z, thisClient.holdsPiece.angle);
@@ -820,7 +820,7 @@ io.on('connection', function (socket) {
 								if (typeof(thisClient) === 'undefined') return;
 								if (typeof(thisClient.holdsPiece) === 'undefined') return;
 								if (typeof(clientwasholdingthis) === 'undefined') return;
-								if (typeof(sessions[thisClient.currentgameid]) === 'undefined') return;
+								if (!(thisClient.currentgameid in sessions)) return;
 								if (thisClient.holdsPiece.id === clientwasholdingthis.id) {
 									for (const client of sessions[thisClient.currentgameid].players) {
 										// remove highlight of held piece
@@ -846,7 +846,7 @@ io.on('connection', function (socket) {
 		}
 		// is client in a game?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
 				socket.emit('currentStats', currentStats, sessions[thisClient.currentgameid].currentHost === thisClient.clientID);
 			}
@@ -861,7 +861,7 @@ io.on('connection', function (socket) {
 		}
 		// is client in a game?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				// is this client the host?
 				if (sessions[thisClient.currentgameid].currentHost === thisClient.clientID) {
 					sessions[thisClient.currentgameid].playerToBeKicked = clients[sessions[thisClient.currentgameid].players[someindex]];
@@ -881,7 +881,7 @@ io.on('connection', function (socket) {
 		}
 		// is client in a game?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				// is this client the host?
 				if (sessions[thisClient.currentgameid].currentHost === thisClient.clientID) {
 					if (typeof(sessions[thisClient.currentgameid].playerToBeKicked) !== 'undefined') {
@@ -911,7 +911,7 @@ io.on('connection', function (socket) {
     console.log("user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
 		// does the game exist?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				var someSession = sessions[thisClient.currentgameid];
 				cleanUpClientObject(thisClient);
 				// update current list of players for everyone
@@ -932,7 +932,7 @@ io.on('connection', function (socket) {
 		}
 		// does the game exist?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				var someSession = sessions[thisClient.currentgameid];
 				cleanUpClientObject(thisClient);
 				// update current list of players for everyone
@@ -952,7 +952,7 @@ io.on('connection', function (socket) {
 		}
 		// does the game exist?
 		if (thisClient.currentgameid !== "") {
-			if (typeof(sessions[thisClient.currentgameid]) !== 'undefined') {
+			if (thisClient.currentgameid in sessions) {
 				var someSession = sessions[thisClient.currentgameid];
 				cleanUpClientObject(thisClient);
 				// update current list of players for everyone
@@ -1137,7 +1137,7 @@ function getfullsessionobject(someSessionID) {
 function getCurrentListofPlayers(someSession) {
 	var result = [];
 	for (const clientID of someSession.players) {
-		if (typeof(clients[clientID]) === 'undefined') continue;
+		if (!(clientID in clients)) continue;
 		if (!(someSession.id in clients[clientID].sessionConnectionCounter))
 			clients[clientID].sessionConnectionCounter[someSession.id] = 0;
 		result.push({"name": clients[clientID].name,
@@ -1157,7 +1157,7 @@ function cleanUpClientObject(someClient) {
 		claimAllPiecesWithinPartition(sessions[someClient.currentgameid], undefined, someClient.holdsPiece.partition);
 		// remove highlight of held piece
 		for (const client of sessions[someClient.currentgameid].players) {
-			if (typeof(clients[client]) !== 'undefined') {
+			if (client in clients) {
 				if (clients[client].clientID !== someClient.clientID) io.to(clients[client].socketID).emit('unhighlightPiece', someClient.holdsPiece.i, someClient.holdsPiece.j);
 			}
 		}
