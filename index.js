@@ -1,4 +1,4 @@
-const version = "0.9.11";
+const version = "0.9.12";
 
 // load and setup prerequisites
 var express = require('express');
