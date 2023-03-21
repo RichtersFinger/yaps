@@ -1,4 +1,4 @@
-const version = "0.9.12";
+const version = "0.9.13";
 
 // load and setup prerequisites
 var express = require('express');
@@ -21,12 +21,12 @@ if (!fs.existsSync(tmpdir)){
 } else {
 	fs.readdir(tmpdir, (err, files) => {
 	  if (err) {
-			console.log("unable to read '" + tmpdir + "/', no cleanup done");
+			console.log(getTimestamp() + "unable to read '" + tmpdir + "/', no cleanup done");
 		} else {
 			for (const file of files) {
 				fs.unlink(path.join(tmpdir, file), (err) => {
 					if (err) {
-						console.log("unable to delete '" + path.join(tmpdir, file) + "'");
+						console.log(getTimestamp() + "unable to delete '" + path.join(tmpdir, file) + "'");
 					}
 				});
 			}
@@ -58,6 +58,11 @@ const nMaximumCharactersSessionName = 20;
 const nMaximumCharactersSessionPassphrase = 20;
 var sessions = {};
 
+function getTimestamp() {
+	var now = new Date();
+	return "\x1b[1m" + now.toLocaleDateString() + ", " + now.toLocaleTimeString() + ": \x1b[0m";
+}
+
 // ask for ip & define port:
 const publicipAPI = 'api.ipify.org';
 const port = 8080;
@@ -65,12 +70,12 @@ var serverip = 0;
 http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, function(resp) {
   resp.on('data', function(ip) {
     serverip = ip;
-		console.log("public adress " + serverip + ":" + port);
+		console.log(getTimestamp() + "public adress " + serverip + ":" + port);
   });
 }).on('error', function(err) {
-	console.log("public IP address API unavailable.. maybe check url definition 'publicipAPI' in file 'index.js'");
+	console.log(getTimestamp() + "public IP address API unavailable.. maybe check url definition 'publicipAPI' in file 'index.js'");
 }).on('timeout', function(err) {
-	console.log("(public ip) " + publicipAPI + " takes unusually long to answer..");
+	console.log(getTimestamp() + "(public ip) " + publicipAPI + " takes unusually long to answer..");
 });
 
 io.on('connection', function (socket) {
@@ -85,13 +90,13 @@ io.on('connection', function (socket) {
 					// register as new client anyway
 					clients[userID] = new client(userID, userID);
 					thisClient = clients[userID];
-					console.log("registered new client", userID);
+					console.log(getTimestamp() + "registered new client", userID);
 					socket.emit('newClientID', userID);
 					thisClient.login();
 				} else {
 					// make association to existing entry
-					console.log(previousname + ": reconnecting existing client");
-					console.log("updating socketID from", clients[previousname].socketID, "to", userID, "(" + clients[previousname].name + ")");
+					console.log(getTimestamp() + previousname + ": reconnecting existing client");
+					console.log(getTimestamp() + "updating socketID from", clients[previousname].socketID, "to", userID, "(" + clients[previousname].name + ")");
 					clients[previousname].socketID = userID;
 					thisClient = clients[previousname];
 					thisClient.login();
@@ -100,7 +105,7 @@ io.on('connection', function (socket) {
 				// register as new client anyway
 				clients[userID] = new client(userID, userID);
 				thisClient = clients[userID];
-				console.log("registered new client", userID);
+				console.log(getTimestamp() + "registered new client", userID);
 				socket.emit('newClientID', userID);
 				thisClient.login();
 			}
@@ -111,7 +116,7 @@ io.on('connection', function (socket) {
 		socket.emit('newClientID', userID);
 		clients[userID] = new client(userID, userID);
 		thisClient = clients[userID];
-		console.log("registered new client", userID);
+		console.log(getTimestamp() + "registered new client", userID);
 		thisClient.login();
 	});
 	// client wants to update displayed name
@@ -158,6 +163,9 @@ io.on('connection', function (socket) {
 	socket.on('iNeedANewList', function(){
 		var reducedListOfSessions = [];
 		for (const session in sessions) {
+			// do not send info on a game that is already finished
+			if (sessions[session].currentconnections >= sessions[session].totalconnections) continue;
+
 			reducedListOfSessions.push({"sessionid": sessions[session].id,
 			                            "name": sessions[session].name,
 			                            "currentplayers": sessions[session].currentplayers,
@@ -244,7 +252,7 @@ io.on('connection', function (socket) {
 			socket.emit('releaseBlockedInterface');
 			return;
 		}
-		console.log('new session with ID ' + sessionid + ' requested by ' + thisClient.clientID);
+		console.log(getTimestamp() + 'new session with ID ' + sessionid + ' requested by ' + thisClient.clientID);
 		// test if all input is valid and insert into server-side object
 		// check on validity of session name & passphrase
 		new_session_object.name = some_session_object.name.replace(/<|>|&|;|#/g, "");
@@ -398,7 +406,7 @@ io.on('connection', function (socket) {
 		sessions[sessionid].players[0] = thisClient.clientID;
 		// signal host to enter game
 		socket.emit('enterThisSession', getfullsessionobject(sessionid));
-		console.log('> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
+		console.log(getTimestamp() + '> ' + sessionid + ': ' + sessions[sessionid].currentplayers + '/' + sessions[sessionid].maxplayers);
 	});
 	// handle client request to enter specific session
 	socket.on('iWantToEnterSession', function(some_session_id, some_passphrase) {
@@ -420,6 +428,12 @@ io.on('connection', function (socket) {
 		// check if session id valid and this session exists
 		if (typeof(some_session_id) === 'string') {
 			if (some_session_id in sessions) {
+				// prevent entering game that is currently being closed down
+				if (sessions[some_session_id].currentconnections >= sessions[some_session_id].totalconnections) {
+					socket.emit('alert', 'This session will be closed soon.');
+					socket.emit('releaseBlockedInterface');
+					return;
+				}
 				// prevent client from entering if already kicked from session
 				if (sessions[some_session_id].kickedPlayers.includes(thisClient.clientID)) {
 					socket.emit('alert', 'You have been kicked from that session.');
@@ -447,11 +461,11 @@ io.on('connection', function (socket) {
 					thisClient.currentgameid = sessions[some_session_id].id;
 					socket.emit('enterThisSession', getfullsessionobject(some_session_id));
 					sessions[some_session_id].players.push(thisClient.clientID);
-					console.log('> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
+					console.log(getTimestamp() + '> ' + some_session_id + ': ' + sessions[some_session_id].currentplayers + '/' + sessions[some_session_id].maxplayers);
 					// make new host if necessary
 					if (sessions[some_session_id].currentHost === "") {
 						sessions[some_session_id].currentHost = thisClient.clientID;
-						console.log('new host in ' + some_session_id + ': ' + sessions[some_session_id].currentHost + ' (' + thisClient.name + ')');
+						console.log(getTimestamp() + 'new host in ' + some_session_id + ': ' + sessions[some_session_id].currentHost + ' (' + thisClient.name + ')');
 					}
 					// update current list of players for everyone
 					var currentStats = getCurrentListofPlayers(sessions[thisClient.currentgameid]);
@@ -673,6 +687,34 @@ io.on('connection', function (socket) {
 								io.to(clients[client].socketID).emit('playSFX_combine', partitionshavechanged);
 							}
 						}
+
+						// check whether puzzle has been completed
+						// timeout duration in seconds
+						const completionPuzzleTimeout = 300;
+						if (sessions[thisClient.currentgameid].currentconnections >= sessions[thisClient.currentgameid].totalconnections) {
+							// notify clients about upcoming timeout
+							for (const client of sessions[thisClient.currentgameid].players) {
+								if (client in clients) {
+									io.to(clients[client].socketID).emit('startSessionTimeout', completionPuzzleTimeout);
+								}
+							}
+
+							// set actual timer
+							let currentgameid = thisClient.currentgameid;
+							sessions[currentgameid].completionPuzzleTimeout_timer = setTimeout(function() {
+								// send players back to lobby
+								for (const client of sessions[currentgameid].players) {
+									if (client in clients) {
+										io.to(clients[client].socketID).emit('youCanLeave');
+										io.to(clients[client].socketID).emit('alert', "This session has been closed.");
+									}
+									cleanUpClientObject(clients[client]);
+								}
+								// delete session
+								delete sessions[currentgameid];
+								console.log(getTimestamp() + "Terminated session " + currentgameid);
+							}, completionPuzzleTimeout*1000);
+						}
 					} else {
 						// only update piece positions in this partition
 						for (const piece of thisPiece.partition.pieces) {
@@ -885,7 +927,7 @@ io.on('connection', function (socket) {
 				// is this client the host?
 				if (sessions[thisClient.currentgameid].currentHost === thisClient.clientID) {
 					if (typeof(sessions[thisClient.currentgameid].playerToBeKicked) !== 'undefined') {
-						console.log("host kicked " + sessions[thisClient.currentgameid].playerToBeKicked.clientID + " (" + sessions[thisClient.currentgameid].playerToBeKicked.name + ") from session " + thisClient.currentgameid);
+						console.log(getTimestamp() + "host kicked " + sessions[thisClient.currentgameid].playerToBeKicked.clientID + " (" + sessions[thisClient.currentgameid].playerToBeKicked.name + ") from session " + thisClient.currentgameid);
 						sessions[thisClient.currentgameid].kickedPlayers.push(sessions[thisClient.currentgameid].playerToBeKicked.clientID);
 						cleanUpClientObject(sessions[thisClient.currentgameid].playerToBeKicked);
 						io.to(sessions[thisClient.currentgameid].playerToBeKicked.socketID).emit('youCanLeave');
@@ -908,7 +950,7 @@ io.on('connection', function (socket) {
 		if (typeof(thisClient) === 'undefined') {
 			return;
 		}
-    console.log("user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
+    console.log(getTimestamp() + "user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
 		// does the game exist?
 		if (thisClient.currentgameid !== "") {
 			if (thisClient.currentgameid in sessions) {
@@ -967,7 +1009,7 @@ io.on('connection', function (socket) {
 
 // start listening for clients
 server.listen(port, function(){
-	console.log("Listening on port " +  port);
+	console.log(getTimestamp() + "Listening on port " +  port);
 });
 
 // function to format puzzle partitioning in a form that can be send to clients
@@ -1173,14 +1215,14 @@ function cleanUpClientObject(someClient) {
 	if (sessions[someClient.currentgameid].players.includes(someClient.clientID)) {
 		sessions[someClient.currentgameid].currentplayers--;
 		sessions[someClient.currentgameid].players.splice(sessions[someClient.currentgameid].players.indexOf(someClient.clientID), 1);
-		console.log('> ' + someClient.currentgameid + ': ' + sessions[someClient.currentgameid].currentplayers + '/' + sessions[someClient.currentgameid].maxplayers);
+		console.log(getTimestamp() + '> ' + someClient.currentgameid + ': ' + sessions[someClient.currentgameid].currentplayers + '/' + sessions[someClient.currentgameid].maxplayers);
 		someClient.currentgameid = "";
 	}
 	// find new host if necessary
 	if (sessions[currentgameid].currentHost === someClient.clientID) {
 		if (sessions[currentgameid].players.length > 0) {
 			sessions[currentgameid].currentHost = sessions[currentgameid].players[0];
-			console.log('new host in ' + currentgameid + ': ' + sessions[currentgameid].currentHost + ' (' + clients[sessions[currentgameid].currentHost].name + ')');
+			console.log(getTimestamp() + 'new host in ' + currentgameid + ': ' + sessions[currentgameid].currentHost + ' (' + clients[sessions[currentgameid].currentHost].name + ')');
 		} else {
 			sessions[currentgameid].currentHost = "";
 		}
@@ -1196,7 +1238,7 @@ function saveimagetofile(image, filepath) {
 		fs.writeFileSync(filepath, bitmap);
 		return {"success": true, "buffer": bitmap};
 	} catch(err) {
-		console.log('some error occured when trying to save base64 to file', err);
+		console.log(getTimestamp() + 'some error occured when trying to save base64 to file', err);
 		return {"success": false, "buffer": bitmap};
 	}
 }
