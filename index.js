@@ -1,4 +1,4 @@
-const version = "0.9.13";
+const version = "0.9.13.1";
 
 // load and setup prerequisites
 var express = require('express');
@@ -77,6 +77,16 @@ http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, functi
 }).on('timeout', function(err) {
 	console.log(getTimestamp() + "(public ip) " + publicipAPI + " takes unusually long to answer..");
 });
+
+// timeout duration in seconds
+// after completion
+const completionPuzzleTimeout = 300;
+// on idle
+const idlePuzzleTimeout = 300;
+// idle duration
+const puzzleIdle = 300;
+// interval where activity is checked
+const puzzleIdleCheck = 10;
 
 io.on('connection', function (socket) {
 	var userID = socket.id; // user/client identifier for communication
@@ -400,6 +410,62 @@ io.on('connection', function (socket) {
 		new_session_object.kickedPlayers = [];
 		sessions[sessionid] = new_session_object;
 
+		// check regularly for idle session
+		let currentgameid = sessionid;
+		new_session_object.clearIdleTimeout = function() {
+			// this session is still active; disable timout if necessary
+			if (typeof(sessions[currentgameid].idlePuzzleTimeout_timer) !== 'undefined') {
+				clearTimeout(sessions[currentgameid].idlePuzzleTimeout_timer);
+				sessions[currentgameid].idlePuzzleTimeout_timer = undefined;
+
+				// remove timer for clients only if this session is still incomplete
+				if (sessions[currentgameid].currentconnections < sessions[currentgameid].totalconnections) {
+					// notify clients
+					for (const client of sessions[currentgameid].players) {
+						if (client in clients) {
+							io.to(clients[client].socketID).emit('stopSessionTimeout');
+						}
+					}
+				}
+			}
+		};
+		new_session_object.lastactivity = Date.now();
+		new_session_object.idleTestTimer = setInterval(function() {
+			// if no activity for duration of puzzleIdle
+			if (Date.now() - sessions[currentgameid].lastactivity > puzzleIdle*1000) {
+				// only do this if not already running
+				if (typeof(sessions[currentgameid].idlePuzzleTimeout_timer) === 'undefined') {
+					// signal and start timout
+					// notify clients about upcoming timeout
+					for (const client of sessions[currentgameid].players) {
+						if (client in clients) {
+							io.to(clients[client].socketID).emit('startSessionTimeout', idlePuzzleTimeout, 'inactivity');
+						}
+					}
+					// set timer (only if this session is still incomplete)
+					if (sessions[currentgameid].currentconnections < sessions[currentgameid].totalconnections) {
+						sessions[currentgameid].idlePuzzleTimeout_timer = setTimeout(function() {
+							// send players back to lobby
+							for (const client of sessions[currentgameid].players) {
+								if (client in clients) {
+									io.to(clients[client].socketID).emit('youCanLeave');
+									io.to(clients[client].socketID).emit('alert', "This session has been closed.");
+								}
+								cleanUpClientObject(clients[client]);
+							}
+							// delete session
+							clearInterval(sessions[currentgameid].idleTestTimer);
+							delete sessions[currentgameid];
+							console.log(getTimestamp() + "Terminated session " + currentgameid);
+						}, idlePuzzleTimeout*1000);
+					}
+				}
+			} else {
+				// this session is still active; disable timout if necessary
+				sessions[currentgameid].clearIdleTimeout();
+			}
+		}, puzzleIdleCheck*1000);
+
 		sessions[sessionid].currentplayers = 1;
 		thisClient.currentgameid = sessions[sessionid].id;
 		sessions[sessionid].players = [];
@@ -456,6 +522,9 @@ io.on('connection', function (socket) {
 							}
 						}
 					}
+					// reset idle timeout
+					sessions[some_session_id].lastactivity = Date.now();
+					sessions[some_session_id].clearIdleTimeout();
 					// send info to client
 					sessions[some_session_id].currentplayers++;
 					thisClient.currentgameid = sessions[some_session_id].id;
@@ -521,6 +590,9 @@ io.on('connection', function (socket) {
 					if (Number.isInteger(i) && Number.isInteger(j)) {
 						if (i >= 0 && i < sessions[thisClient.currentgameid].puzzle.layout[0]
 						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
+							// reset idle timeout
+							sessions[thisClient.currentgameid].lastactivity = Date.now();
+							sessions[thisClient.currentgameid].clearIdleTimeout();
 							// is tile not picked up by anyone yet?
 							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) === 'undefined') {
 								// does player already hold a piece? -> drop that first
@@ -604,6 +676,10 @@ io.on('connection', function (socket) {
 			// is player part of that session?
 			if (sessions[thisClient.currentgameid].players.includes(thisClient.clientID)) {
 				if (typeof(thisClient.holdsPiece) !== 'undefined') {
+					// reset idle timeout
+					sessions[thisClient.currentgameid].lastactivity = Date.now();
+					sessions[thisClient.currentgameid].clearIdleTimeout();
+
 					// release claim
 					clearTimeout(thisClient.heldPieceTimeout);
 					thisClient.heldPieceTimeout = undefined;
@@ -689,10 +765,14 @@ io.on('connection', function (socket) {
 						}
 
 						// check whether puzzle has been completed
-						// timeout duration in seconds
-						const completionPuzzleTimeout = 300;
 						if (sessions[thisClient.currentgameid].currentconnections >= sessions[thisClient.currentgameid].totalconnections) {
-							// notify clients about upcoming timeout
+							// for safety clear idle timout
+							// and stop testing for idle
+							clearInterval(sessions[currentgameid].idleTestTimer);
+							if (typeof(sessions[thisClient.currentgameid].idlePuzzleTimeout_timer) === 'undefined') {
+								clearTimeout(sessions[thisClient.currentgameid].idlePuzzleTimeout_timer);
+							}
+							// notify clients of upcoming timeout
 							for (const client of sessions[thisClient.currentgameid].players) {
 								if (client in clients) {
 									io.to(clients[client].socketID).emit('startSessionTimeout', completionPuzzleTimeout);
@@ -752,6 +832,10 @@ io.on('connection', function (socket) {
 					// check types of input
 					if (typeof(x) === 'number' && typeof(y) === 'number' && typeof(angle) === 'number') {
 						if (Number.isInteger(angle)) {
+							// reset idle timeout
+							sessions[thisClient.currentgameid].lastactivity = Date.now();
+							sessions[thisClient.currentgameid].clearIdleTimeout();
+
 							// update piece coordinates
 							thisClient.holdsPiece.x = x;
 							thisClient.holdsPiece.y = y;
@@ -800,6 +884,9 @@ io.on('connection', function (socket) {
 						    && j >= 0 && j < sessions[thisClient.currentgameid].puzzle.layout[1]) {
 							// is tile not picked up by anyone yet?
 							if (typeof(sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby) !== 'undefined') {
+								// reset idle timeout
+								sessions[thisClient.currentgameid].lastactivity = Date.now();
+								sessions[thisClient.currentgameid].clearIdleTimeout();
 								if (sessions[thisClient.currentgameid].puzzle.pieces[i][j].heldby.clientID !== thisClient.clientID) {
 									// decline only if other client has this claim
 									return;
@@ -854,7 +941,6 @@ io.on('connection', function (socket) {
 								piece.y = thisClient.holdsPiece.y + deltay;
 								piece.angle = thisClient.holdsPiece.angle;
 							}
-
 
 							// timeout so that tile is dropped automatically
 							let clientwasholdingthis = thisClient.holdsPiece;
@@ -1144,6 +1230,7 @@ function getfullsessionobject(someSessionID) {
 	var somesession = {};
 	var somepuzzle = {};
 	somesession["id"] = someSessionID;
+	somesession["name"] = sessions[someSessionID].name;
 	somesession["currentconnections"] = sessions[someSessionID].puzzle.connectededges;
 	somesession["totalconnections"] = sessions[someSessionID].puzzle.totaledges;
 	somesession["userotation"] = sessions[someSessionID].userotation;
@@ -1183,10 +1270,10 @@ function getCurrentListofPlayers(someSession) {
 		if (!(someSession.id in clients[clientID].sessionConnectionCounter))
 			clients[clientID].sessionConnectionCounter[someSession.id] = 0;
 		result.push({"name": clients[clientID].name,
-											 "colorID": clients[clientID].colorID,
-											 "isHost": sessions[someSession.id].currentHost === clientID,
-											 "sessionConnectionCounter": clients[clientID].sessionConnectionCounter[someSession.id],
-											 "connectionCounter": clients[clientID].connectionCounter});
+		             "colorID": clients[clientID].colorID,
+		             "isHost": sessions[someSession.id].currentHost === clientID,
+		             "sessionConnectionCounter": clients[clientID].sessionConnectionCounter[someSession.id],
+		             "connectionCounter": clients[clientID].connectionCounter});
 	}
 	return result;
 }
