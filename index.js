@@ -1,4 +1,4 @@
-const version = "0.9.13.1";
+const version = "0.9.13.2";
 
 // load and setup prerequisites
 var express = require('express');
@@ -77,6 +77,9 @@ http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, functi
 }).on('timeout', function(err) {
 	console.log(getTimestamp() + "(public ip) " + publicipAPI + " takes unusually long to answer..");
 });
+
+// maximum number of open sessions
+const max_number_of_sessions = 10;
 
 // timeout duration in seconds
 // after completion
@@ -195,6 +198,13 @@ io.on('connection', function (socket) {
 	const nMaximumPlayers = 20;
 	const nDifficultySettings = 4;
 	socket.on('iWantToStartNewSession', function(some_session_object) {
+		// check for number of sessions
+		if (Object.keys(sessions).length >= max_number_of_sessions) {
+				socket.emit('alert', 'Maximum number of sessions reached.');
+				socket.emit('releaseBlockedInterface');
+				return;
+		}
+
 		// check existence and types of entries in some_session_object
 		var validinputtypes = true;
 		if (typeof(some_session_object) !== 'object') {
@@ -768,7 +778,9 @@ io.on('connection', function (socket) {
 						if (sessions[thisClient.currentgameid].currentconnections >= sessions[thisClient.currentgameid].totalconnections) {
 							// for safety clear idle timout
 							// and stop testing for idle
-							clearInterval(sessions[currentgameid].idleTestTimer);
+							if (typeof(sessions[thisClient.currentgameid].idleTestTimer) !== 'undefined') {
+								clearInterval(sessions[thisClient.currentgameid].idleTestTimer);
+							}
 							if (typeof(sessions[thisClient.currentgameid].idlePuzzleTimeout_timer) === 'undefined') {
 								clearTimeout(sessions[thisClient.currentgameid].idlePuzzleTimeout_timer);
 							}
