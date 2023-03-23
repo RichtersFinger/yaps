@@ -1,4 +1,6 @@
-const version = "0.9.13.2";
+/* Copyright (c) 2023 Steffen Richters-Finger */
+
+const version = "1.0";
 
 // load and setup prerequisites
 var express = require('express');
@@ -68,10 +70,10 @@ const publicipAPI = 'api.ipify.org';
 const port = 8080;
 var serverip = 0;
 http.get({'host': publicipAPI, 'port': 80, 'path': '/', 'timeout': 5000}, function(resp) {
-  resp.on('data', function(ip) {
-    serverip = ip;
+	resp.on('data', function(ip) {
+		serverip = ip;
 		console.log(getTimestamp() + "public adress " + serverip + ":" + port);
-  });
+	});
 }).on('error', function(err) {
 	console.log(getTimestamp() + "public IP address API unavailable.. maybe check url definition 'publicipAPI' in file 'index.js'");
 }).on('timeout', function(err) {
@@ -193,16 +195,16 @@ io.on('connection', function (socket) {
 	});
 	// client requests to create a new session
 	const nMaximumCharactersSession = 20;
-	const nMaximumPiecesPerDirection = 50, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;
+	const nMaximumPiecesPerDirection = 30, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;
 	const nMaximumRetriesFindingID = 5;
 	const nMaximumPlayers = 20;
 	const nDifficultySettings = 4;
 	socket.on('iWantToStartNewSession', function(some_session_object) {
 		// check for number of sessions
 		if (Object.keys(sessions).length >= max_number_of_sessions) {
-				socket.emit('alert', 'Maximum number of sessions reached.');
-				socket.emit('releaseBlockedInterface');
-				return;
+			socket.emit('alert', 'Maximum number of sessions reached.');
+			socket.emit('releaseBlockedInterface');
+			return;
 		}
 
 		// check existence and types of entries in some_session_object
@@ -228,8 +230,8 @@ io.on('connection', function (socket) {
 				    || typeof(some_session_object.piecesperlength) !== 'number'
 				    || typeof(some_session_object.maxplayers) !== 'number'
 				    || typeof(some_session_object.difficulty) !== 'number'
-						|| typeof(some_session_object.userotation) !== 'boolean'
-						|| typeof(some_session_object.competitive) !== 'boolean'
+				    || typeof(some_session_object.userotation) !== 'boolean'
+				    || typeof(some_session_object.competitive) !== 'boolean'
 				    || typeof(some_session_object.motif) !== 'string'
 				    || typeof(some_session_object.motif_res) !== 'object') {
 					validinputtypes = false;
@@ -335,7 +337,7 @@ io.on('connection', function (socket) {
 		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
 		if (some_session_object.motif.substr(0, 10) === "data:image") {
 			// as url
-			var filepath = "tmp/motif_" + sessionid; // + "." + some_session_object.motif.substring(some_session_object.motif.indexOf('/') + 1, some_session_object.motif.indexOf(';base64'));
+			var filepath = "tmp/motif_" + sessionid;
 			var saveimage_response = saveimagetofile(some_session_object.motif, filepath);
 			if (saveimage_response.success) {
 				new_session_object.motif = filepath;
@@ -355,10 +357,10 @@ io.on('connection', function (socket) {
 						new_session_object.puzzledimensions = [1.0, some_session_object.motif_res[1]/some_session_object.motif_res[0]];
 					}
 					const game_boundary_baserange = 2.0;
-		      new_session_object.game_boundary_left = 0.5 - new_session_object.puzzledimensions[0] * game_boundary_baserange;
-		      new_session_object.game_boundary_right = 0.5 + new_session_object.puzzledimensions[0] * game_boundary_baserange;
-		      new_session_object.game_boundary_top = 0.5 - new_session_object.puzzledimensions[1] * game_boundary_baserange;
-		      new_session_object.game_boundary_bottom = 0.5 + new_session_object.puzzledimensions[1] * game_boundary_baserange;
+					new_session_object.game_boundary_left = 0.5 - new_session_object.puzzledimensions[0] * game_boundary_baserange;
+					new_session_object.game_boundary_right = 0.5 + new_session_object.puzzledimensions[0] * game_boundary_baserange;
+					new_session_object.game_boundary_top = 0.5 - new_session_object.puzzledimensions[1] * game_boundary_baserange;
+					new_session_object.game_boundary_bottom = 0.5 + new_session_object.puzzledimensions[1] * game_boundary_baserange;
 					// check whether resulting puzzle resolution is fine
 					if (Math.min(new_session_object.layout[0], new_session_object.layout[1]) < nMinimumPiecesShortDirection) {
 							socket.emit('alert', "Requested puzzle resolution too small (" + new_session_object.layout[0] + ", " + new_session_object.layout[1] + ").");
@@ -465,8 +467,14 @@ io.on('connection', function (socket) {
 							}
 							// delete session
 							clearInterval(sessions[currentgameid].idleTestTimer);
-							delete sessions[currentgameid];
 							console.log(getTimestamp() + "Terminated session " + currentgameid);
+							let filepath = sessions[currentgameid].motif;
+							fs.unlink(filepath, (err) => {
+								if (err) {
+									console.log(getTimestamp() + "unable to delete '" + filepath + "'");
+								}
+							});
+							delete sessions[currentgameid];
 						}, idlePuzzleTimeout*1000);
 					}
 				}
@@ -652,7 +660,7 @@ io.on('connection', function (socket) {
 											if (client in clients) {
 												for (const piece of thisClient.holdsPiece.partition.pieces) {
 													io.to(clients[client].socketID).emit('updatePieceCoordinates',
-													                                          piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
+													                                     piece.i, piece.j, piece.x, piece.y, piece.z, piece.angle);
 												}
 											}
 											// remove highlight of held piece
@@ -708,9 +716,9 @@ io.on('connection', function (socket) {
 					for (const piece of thisPiece.partition.pieces) {
 						// get coordinates
 						var deltax = (piece.x0[thisPiece.angle] - thisPiece.x0[thisPiece.angle]) * cosangle
-												 - (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * sinangle;
+						             - (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * sinangle;
 						var deltay = (piece.x0[thisPiece.angle] - thisPiece.x0[thisPiece.angle]) * sinangle
-												 + (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * cosangle;
+						             + (piece.y0[thisPiece.angle] - thisPiece.y0[thisPiece.angle]) * cosangle;
 						piece.x = thisPiece.x + deltax;
 						piece.y = thisPiece.y + deltay;
 						piece.angle = thisPiece.angle;
@@ -803,8 +811,14 @@ io.on('connection', function (socket) {
 									cleanUpClientObject(clients[client]);
 								}
 								// delete session
-								delete sessions[currentgameid];
 								console.log(getTimestamp() + "Terminated session " + currentgameid);
+								let filepath = sessions[currentgameid].motif;
+								fs.unlink(filepath, (err) => {
+									if (err) {
+										console.log(getTimestamp() + "unable to delete '" + filepath + "'");
+									}
+								});
+								delete sessions[currentgameid];
 							}, completionPuzzleTimeout*1000);
 						}
 					} else {
@@ -941,13 +955,13 @@ io.on('connection', function (socket) {
 							}
 
 							// apply this to other pieces of same partition
-	            var cosangle = Math.cos(thisClient.holdsPiece.angle*Math.PI/2);
-	            var sinangle = Math.sin(thisClient.holdsPiece.angle*Math.PI/2);
+							var cosangle = Math.cos(thisClient.holdsPiece.angle*Math.PI/2);
+							var sinangle = Math.sin(thisClient.holdsPiece.angle*Math.PI/2);
 							for (const piece of thisClient.holdsPiece.partition.pieces) {
 								// get coordinates
-		            var deltax = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * cosangle
+								var deltax = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * cosangle
 								             - (piece.y0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.y0[thisClient.holdsPiece.angle]) * sinangle;
-		            var deltay = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * sinangle
+ 								var deltay = (piece.x0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.x0[thisClient.holdsPiece.angle]) * sinangle
 								             + (piece.y0[thisClient.holdsPiece.angle] - thisClient.holdsPiece.y0[thisClient.holdsPiece.angle]) * cosangle;
 								piece.x = thisClient.holdsPiece.x + deltax;
 								piece.y = thisClient.holdsPiece.y + deltay;
@@ -1048,7 +1062,7 @@ io.on('connection', function (socket) {
 		if (typeof(thisClient) === 'undefined') {
 			return;
 		}
-    console.log(getTimestamp() + "user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
+		console.log(getTimestamp() + "user", thisClient.clientID, "(" + thisClient.name + ") disconnected");
 		// does the game exist?
 		if (thisClient.currentgameid !== "") {
 			if (thisClient.currentgameid in sessions) {
@@ -1247,6 +1261,7 @@ function getfullsessionobject(someSessionID) {
 	somesession["totalconnections"] = sessions[someSessionID].puzzle.totaledges;
 	somesession["userotation"] = sessions[someSessionID].userotation;
 	somesession["competitive"] = sessions[someSessionID].competitive;
+	somesession["difficulty"] = sessions[someSessionID].difficulty;
 	somesession["puzzle"] = somepuzzle;
 	somepuzzle["layout"] = sessions[someSessionID].puzzle.layout;
 	somepuzzle["dimensions"] = sessions[someSessionID].puzzle.dimensions;
@@ -1266,7 +1281,8 @@ function getfullsessionobject(someSessionID) {
 			pieces[i][j]["angle"] = sessions[someSessionID].puzzle.pieces[i][j].angle;
 			pieces[i][j]["w"] = sessions[someSessionID].puzzle.pieces[i][j].w;
 			pieces[i][j]["h"] = sessions[someSessionID].puzzle.pieces[i][j].h;
-			pieces[i][j]["edges"] = sessions[someSessionID].puzzle.pieces[i][j].edges;
+			// calculate tiling client-side (performance reasons)
+			//pieces[i][j]["edges"] = sessions[someSessionID].puzzle.pieces[i][j].edges;
 			pieces[i][j]["connections"] = sessions[someSessionID].puzzle.pieces[i][j].connections;
 		}
 	}

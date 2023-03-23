@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2023 Steffen Richters-Finger -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -34,6 +35,29 @@
 			-ms-user-select: none; /* Internet Explorer/Edge */
 			user-select: none; /* Non-prefixed version, currently
 			supported by Chrome, Opera and Firefox */
+		}
+
+		.helpbuttons_inactive {
+			background-color: #555555;
+			display: inline-block;
+			width: calc(1.25vmin);
+			height: calc(1.25vmin);
+			margin-top: calc(1.875vmin);
+			margin-left: calc(0.75vmin);
+			margin-right: calc(0.75vmin);
+			border-radius: 50%;
+			cursor: pointer;
+		}
+
+		.helpbuttons_active {
+			background-color: #2196f3;
+			display: inline-block;
+			width: calc(1.5vmin);
+			height: calc(1.5vmin);
+			margin-top: calc(1.75vmin);
+			margin-left: calc(0.75vmin);
+			margin-right: calc(0.75vmin);
+			border-radius: 50%;
 		}
 
 		/*color selection button*/
@@ -80,44 +104,44 @@
 			background-color: rgba(200,200,200,0.3);
 		}
 		.sessionlist td {
-		  padding-top: calc(0.5vmin);
-		  padding-bottom: calc(0.5vmin);
-	  	text-align: center;
+			padding-top: calc(0.5vmin);
+			padding-bottom: calc(0.5vmin);
+			text-align: center;
 		}
 		.sessionlist th {
-		  padding-top: calc(0.5vmin);
-		  padding-bottom: calc(0.5vmin);
-		  text-align: left;
-		  background-color: rgba(20,20,20,0.3);
-		  color: white;
+			padding-top: calc(0.5vmin);
+			padding-bottom: calc(0.5vmin);
+			text-align: left;
+			background-color: rgba(20,20,20,0.3);
+			color: white;
 		}
 
 		.scorelist {
 		}
 		.scorelist td {
-		  padding-top: calc(0.5vmin);
-		  padding-bottom: calc(0.5vmin);
-	  	text-align: center;
+			padding-top: calc(0.5vmin);
+			padding-bottom: calc(0.5vmin);
+			text-align: center;
 		}
 		.scorelist th {
-		  padding-top: calc(0.5vmin);
-		  padding-bottom: calc(0.5vmin);
-		  text-align: left;
-		  color: white;
+			padding-top: calc(0.5vmin);
+			padding-bottom: calc(0.5vmin);
+			text-align: left;
+			color: white;
 		}
 
 		.optionstable {
 		}
 		.optionstable td {
-		  padding-top: calc(1.5vmin);
-		  padding-bottom: calc(1.5vmin);
-	  	text-align: left;
+			padding-top: calc(1.5vmin);
+			padding-bottom: calc(1.5vmin);
+			text-align: left;
 		}
 		.optionstable th {
-		  padding-top: calc(1.5vmin);
-		  padding-bottom: calc(1.5vmin);
-		  text-align: left;
-		  color: white;
+			padding-top: calc(1.5vmin);
+			padding-bottom: calc(1.5vmin);
+			text-align: left;
+			color: white;
 		}
 
 		/* custom checkbox */
@@ -138,7 +162,7 @@
 			left: 0;
 			right: 0;
 			bottom: 0;
-		  border-radius: calc(2vw);
+			border-radius: calc(2vw);
 			background-color: #ccc;
 			-webkit-transition: .4s;
 			transition: .4s;
@@ -150,13 +174,13 @@
 			width: min(calc(2.8vmin), calc(2.8vw));
 			left: min(calc(0.1vmin), calc(0.1vw));
 			bottom: min(calc(0.1vmin), calc(0.1vw));
-		  border-radius: 50%;
+			border-radius: 50%;
 			background-color: white;
 			-webkit-transition: .4s;
 			transition: .4s;
 		}
 		input:checked + .slider {
-			background-color: #2196F3;
+			background-color: #2196f3;
 		}
 		input:checked + .slider:before {
 			-webkit-transform: translateX(min(calc(2vmin), calc(2vw)));
@@ -512,18 +536,30 @@
 							</div>
 						</td>
 					</tr>
-
 				</table>
-
 			</div>
 		</div>
 	</div>
 	<div id="div_game_stats_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
-		<div id="div_game_stats_fancy_background_container" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: 12%; width: calc(75vmin); height: 75%; overflow: hidden">
+		<div id="div_game_stats_fancy_background_container" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: calc(12vh); width: calc(75vmin); height: calc(75vh); overflow: hidden">
 			<button id="div_game_stats_fancy_minimizebutton" class="fancybutton" style="position: absolute; right: calc(6vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/minimizeicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 			<button id="div_game_stats_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
 			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(2.0vmin); margin-top: 0; color: #ffffff; font-size: calc(5vmin)">Current Players</h2>
 			<div id="div_game_stats_fancy_background" style="position: absolute; top: calc(10vmin); height: calc(55vh); overflow-y: auto" class="fancyscrollbar">
+			</div>
+		</div>
+	</div>
+	<div id="div_help_fancy" style="position: fixed; justify-content: center; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; overflow: hidden; backdrop-filter: blur(10px); display: none" class="noselect">
+		<div id="div_help_fancy_background_container" style="position: absolute; display: flex; justify-content: center; border-radius: 10px; background: rgba(50,50,50,0.5); top: calc(5vmin); width: calc(85vmin); height: calc(88vmin); overflow: hidden">
+			<button id="div_help_fancy_cancelbutton" class="fancybutton" style="position: absolute; right: calc(1vmin); top: calc(1vmin); margin: calc(0.2vmin); display: grid; align-items: center"><img src="img/icons/timesicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			<h1 style="position: absolute; left: calc(1.5vmin); top: calc(2.0vmin); margin-top: 0; color: #ffffff; font-size: calc(5vmin)">Help</h2>
+			<div id="div_help_fancy_background" style="position: absolute; display: flex; top: calc(10vmin); height: calc(85vmin); width: calc(70vmin); overflow-y: auto" class="fancyscrollbar">
+				<img id="div_help_fancy_img" src="img/help/helpA1.jpg" style="position: absolute; top: calc(0.5vmin); left: calc(0.5vmin); outline: calc(0.5vmin) solid #ffffff; width: calc(100% - 1vmin)" draggable="false">
+				<p id="div_help_fancy_p" style="position: absolute; left: calc(0.5vmin); top: calc(57.0vmin); color: #ffffff; font-size: calc(2vmin); font-family: Arial, sans-serif" draggable="false"></p>
+			</div>
+			<button id="div_help_fancy_previous" class="fancybutton" style="position: absolute; left: calc(2vmin); top: calc(37vmin); display: grid; align-items: center"><img src="img/icons/playicon.png" width="95%" style="position: relative; left: 2.5%; transform: scaleX(-1)" draggable="false"></button>
+			<button id="div_help_fancy_next" class="fancybutton" style="position: absolute; right: calc(2vmin); top: calc(37vmin); display: grid; align-items: center"><img src="img/icons/playicon.png" width="95%" style="position: relative; left: 2.5%" draggable="false"></button>
+			<div id="div_help_fancy_navigation" style="position: absolute; display: flex; justify-content: center; top: calc(81.0vmin); height: calc(5vmin); padding:0; padding-left: calc(1vmin); padding-right: calc(1vmin); margin: 0; overflow: hidden; background-color: rgba(50,50,50,0.5); border-radius: 10px" class="fancyscrollbar">
 			</div>
 		</div>
 	</div>
