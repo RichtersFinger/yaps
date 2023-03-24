@@ -43,7 +43,7 @@ app.get('/', function(req, res){
 app.use("/img", express.static('img'));
 app.use("/lib", express.static('lib'));
 app.use("/sfx", express.static('sfx'));
-app.use("/tmp", express.static('tmp')); // tmp-directory contains the individual session's puzzle motifs
+app.use("/" + tmpdir, express.static(tmpdir)); // tmp-directory contains the individual session's puzzle motifs
 
 app.use('/favicon.ico', express.static('img/icons/favicon.ico'));
 
@@ -334,10 +334,9 @@ io.on('connection', function (socket) {
 		new_session_object.competitive = some_session_object.competitive;
 
 		// check if valid motif data; write to file
-		// filepath = "tmp/" + filename + "." + image.substring(image.indexOf('/') + 1, image.indexOf(';base64'));
 		if (some_session_object.motif.substr(0, 10) === "data:image") {
 			// as url
-			var filepath = "tmp/motif_" + sessionid;
+			var filepath = tmpdir + "/motif_" + sessionid;
 			var saveimage_response = saveimagetofile(some_session_object.motif, filepath);
 			if (saveimage_response.success) {
 				new_session_object.motif = filepath;
