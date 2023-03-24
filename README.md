@@ -108,10 +108,13 @@ The host of the game, i.e. the person running the server, has to install Node.js
 
 ## Optional Server Configuration
 Here is a list of the more interesting properties that can still be adjusted easily:
+
 * **Max. Number of Sessions**: The maximum number of active sessions can be set in `const max_number_of_sessions = 10;`.
 * **Max. Number of Players**: The maximum number of players per session can be set in `const nMaximumPlayers = 20;`.
 * **Idle Timeout**: If a session has no activity for some time, it will be shut down. There are three timers associated with this process: With `const puzzleIdleCheck = 10;` the frequency of activity checks is configured, `const puzzleIdle = 300;` denotes the duration after which, if the session remains inactive, a countdown for a timeout is started. The latter is given in the line `const idlePuzzleTimeout = 300;`. All values are given in seconds.
 * **Completion Timeout**: The completion timeout countdown of a session starts immediately on completion of the puzzle. Its duration in seconds can be set in the line `const completionPuzzleTimeout = 300;`.
-* **Limitation for Number of Pieces**: The number pieces a puzzle can have is limited both towards lower and upper values. This is controlled in the line `const nMaximumPiecesPerDirection = 30, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;`. Note that values above the upper margin `nMaximumPiecesPerDirection` can lead to a significant drop in performance on the client side due to the large number of elements with possibly complex cut paths.
+* **Limitation for Number of Pieces**: The number pieces a puzzle can have is limited both towards lower and upper values. This is controlled in the line `const nMaximumPiecesPerDirection = 30, nMinimumPiecesLongDirection = 5, nMinimumPiecesShortDirection = 3;`. In order to let clients use an increased range of values, also the two lines `const nMinimumPiecesLongDirection = 5;` and `const nMaximumPiecesPerDirection = 30;` in `lib/game.js` have to be edited accordingly. Note that values above the upper margin `nMaximumPiecesPerDirection` can lead to a significant drop in performance on the client side due to the large number of elements with possibly complex cut paths.
 * **Port**: The local port of the server can be set by modifying the line `const port = 8080;`.
 * **Temporary Directory**: The local local directory in which the currently used puzzle motifs are stored can be set by modifying the line `const tmpdir = "tmp";`.
+
+Simply modify the file `index.js` to your liking.
